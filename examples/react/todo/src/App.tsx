@@ -140,7 +140,7 @@ const createTodoCollection = (type: CollectionType) => {
   } else {
     let newCollection: Collection
     if (type === CollectionType.Electric) {
-      const config = {
+      const { collectionOptions, awaitTxId } = electricCollectionOptions({
         id: `todos`,
         shapeOptions: {
           url: `http://localhost:3003/v1/shape`,
@@ -152,15 +152,15 @@ const createTodoCollection = (type: CollectionType) => {
             timestamptz: (date: string) => new Date(date),
           },
         },
-        getId: (item: UpdateTodo) => item.id,
+        getId: (item) => item.id,
         schema: updateTodoSchema,
-      }
-      const { collectionOptions, awaitTxId } = electricCollectionOptions(config)
+      })
       newCollection = createCollection(collectionOptions)
-      utilityFunctionsCache.set(`${config.id}`, awaitTxId)
+      utilityFunctionsCache.set(`${newCollection.id}`, awaitTxId)
     } else {
       // Query collection using our API helper
-      const config = {
+
+      const { collectionOptions, refetch } = queryCollectionOptions({
         id: `todos`,
         queryKey: [`todos`],
         refetchInterval: 3000,
@@ -176,10 +176,9 @@ const createTodoCollection = (type: CollectionType) => {
         getId: (item: UpdateTodo) => String(item.id),
         schema: updateTodoSchema,
         queryClient,
-      }
-      const { collectionOptions, refetch } = queryCollectionOptions(config)
+      })
       newCollection = createCollection(collectionOptions)
-      utilityFunctionsCache.set(`${config.id}`, refetch)
+      utilityFunctionsCache.set(`${newCollection.id}`, refetch)
     }
     collectionsCache.set(`todo`, newCollection)
     return newCollection
@@ -193,7 +192,7 @@ const createConfigCollection = (type: CollectionType) => {
   } else {
     let newCollection: Collection
     if (type === CollectionType.Electric) {
-      const config = {
+      const { collectionOptions, awaitTxId } = electricCollectionOptions({
         id: `config`,
         shapeOptions: {
           url: `http://localhost:3003/v1/shape`,
@@ -209,13 +208,12 @@ const createConfigCollection = (type: CollectionType) => {
         },
         getId: (item: UpdateConfig) => item.id,
         schema: updateConfigSchema,
-      }
-      const { collectionOptions, awaitTxId } = electricCollectionOptions(config)
+      })
       newCollection = createCollection(collectionOptions)
-      utilityFunctionsCache.set(`${config.id}`, awaitTxId)
+      utilityFunctionsCache.set(`${newCollection.id}`, awaitTxId)
     } else {
       // Query collection using our API helper
-      const config = {
+      const { collectionOptions, refetch } = queryCollectionOptions({
         id: `config`,
         queryKey: [`config`],
         refetchInterval: 3000,
@@ -235,10 +233,9 @@ const createConfigCollection = (type: CollectionType) => {
         getId: (item: UpdateConfig) => item.id,
         schema: updateConfigSchema,
         queryClient,
-      }
-      const { collectionOptions, refetch } = queryCollectionOptions(config)
+      })
       newCollection = createCollection(collectionOptions)
-      utilityFunctionsCache.set(`${config.id}`, refetch)
+      utilityFunctionsCache.set(`${newCollection.id}`, refetch)
     }
     collectionsCache.set(`config`, newCollection)
     return newCollection
