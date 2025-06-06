@@ -44,6 +44,30 @@ export function isComparable(
   )
 }
 
+export function valueToKey(value: any): string {
+  return JSON.stringify(value, (key, val) => {
+    if (typeof val === `bigint`) {
+      return `__bigint__${val.toString()}`
+    }
+    if (typeof val === `symbol`) {
+      return `__symbol__${val.toString()}`
+    }
+    if (typeof val === `function`) {
+      return `__function__${val.toString()}`
+    }
+    if (typeof val === `undefined`) {
+      return `__undefined__`
+    }
+    if (val instanceof Set) {
+      return `__set__${JSON.stringify(Array.from(val))}`
+    }
+    if (val instanceof Map) {
+      return `__map__${JSON.stringify(Array.from(val.entries()))}`
+    }
+    return val
+  })
+}
+
 /**
  * Performs a comparison between two values, ensuring they are of compatible types
  * @param left The left operand

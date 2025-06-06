@@ -1,4 +1,5 @@
 import { keyBy } from "@electric-sql/d2ts"
+import { valueToKey } from "./utils"
 import type { IStreamBuilder } from "@electric-sql/d2ts"
 import type { Query } from "./schema"
 
@@ -16,7 +17,7 @@ export function processKeyBy(
   resultPipeline = resultPipeline.pipe(
     keyBy((row: Record<string, unknown>) => {
       if (Array.isArray(keyByParam)) {
-        // Multiple columns - extract values and JSON stringify
+        // Multiple columns - extract values and stringify
         const keyValues: Record<string, unknown> = {}
         for (const keyColumn of keyByParam) {
           // Remove @ prefix if present
@@ -32,7 +33,7 @@ export function processKeyBy(
             )
           }
         }
-        return JSON.stringify(keyValues)
+        return valueToKey(keyValues)
       } else {
         // Single column
         // Remove @ prefix if present
@@ -47,11 +48,11 @@ export function processKeyBy(
         }
 
         const keyValue = row[columnName]
-        // Use the value directly if it's a string or number, otherwise JSON stringify
+        // Use the value directly if it's a string or number, otherwise stringify
         if (typeof keyValue === `string` || typeof keyValue === `number`) {
           return keyValue
         } else {
-          return JSON.stringify(keyValue)
+          return valueToKey(keyValue)
         }
       }
     })
