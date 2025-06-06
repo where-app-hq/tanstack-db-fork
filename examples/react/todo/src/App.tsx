@@ -251,11 +251,9 @@ async function collectionSync(
   // Get the collection ID from the mutation
   const collectionId = mutation.collection.id
 
-  console.log({ collectionId })
   if (type === CollectionType.Query) {
     // Get the refetch function from the cache
     const refetch = utilityFunctionsCache.get(`${collectionId}`)
-    console.log({ refetch, utilityFunctionsCache })
     if (refetch) {
       await refetch()
     }
