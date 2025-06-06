@@ -202,6 +202,10 @@ export class Collection<T extends object = Record<string, unknown>> {
    * @throws Error if sync config is missing
    */
   constructor(config: CollectionConfig<T>) {
+    // eslint-disable-next-line
+    if (!config) {
+      throw new Error(`Collection requires a config`)
+    }
     if (config.id) {
       this.id = config.id
     } else {
