@@ -3,6 +3,7 @@ import { Ref, Value, type Expression } from '../ir.js'
 export interface RefProxy<T = any> {
   readonly __refProxy: true
   readonly __path: string[]
+  readonly __type: T
 }
 
 /**
@@ -24,6 +25,7 @@ export function createRefProxy<T extends Record<string, any>>(
       get(target, prop, receiver) {
         if (prop === '__refProxy') return true
         if (prop === '__path') return path
+        if (prop === '__type') return undefined // Type is only for TypeScript inference
         if (typeof prop === 'symbol') return Reflect.get(target, prop, receiver)
         
         const newPath = [...path, String(prop)]
@@ -31,7 +33,7 @@ export function createRefProxy<T extends Record<string, any>>(
       },
       
       has(target, prop) {
-        if (prop === '__refProxy' || prop === '__path') return true
+        if (prop === '__refProxy' || prop === '__path' || prop === '__type') return true
         return Reflect.has(target, prop)
       },
       
@@ -40,7 +42,7 @@ export function createRefProxy<T extends Record<string, any>>(
       },
       
       getOwnPropertyDescriptor(target, prop) {
-        if (prop === '__refProxy' || prop === '__path') {
+        if (prop === '__refProxy' || prop === '__path' || prop === '__type') {
           return { enumerable: false, configurable: true }
         }
         return Reflect.getOwnPropertyDescriptor(target, prop)
@@ -56,6 +58,7 @@ export function createRefProxy<T extends Record<string, any>>(
     get(target, prop, receiver) {
       if (prop === '__refProxy') return true
       if (prop === '__path') return []
+      if (prop === '__type') return undefined // Type is only for TypeScript inference
       if (typeof prop === 'symbol') return Reflect.get(target, prop, receiver)
       
       const propStr = String(prop)
@@ -67,17 +70,17 @@ export function createRefProxy<T extends Record<string, any>>(
     },
     
     has(target, prop) {
-      if (prop === '__refProxy' || prop === '__path') return true
+      if (prop === '__refProxy' || prop === '__path' || prop === '__type') return true
       if (typeof prop === 'string' && aliases.includes(prop)) return true
       return Reflect.has(target, prop)
     },
     
     ownKeys(target) {
-      return [...aliases, '__refProxy', '__path']
+      return [...aliases, '__refProxy', '__path', '__type']
     },
     
     getOwnPropertyDescriptor(target, prop) {
-      if (prop === '__refProxy' || prop === '__path') {
+      if (prop === '__refProxy' || prop === '__path' || prop === '__type') {
         return { enumerable: false, configurable: true }
       }
       if (typeof prop === 'string' && aliases.includes(prop)) {

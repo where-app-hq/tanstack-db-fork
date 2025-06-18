@@ -75,12 +75,30 @@ const query = buildQuery((q) =>
 )
 ```
 
+### Type-Safe Expressions
+```ts
+const query = buildQuery((q) =>
+  q.from({ user: usersCollection })
+   .where(({ user }) => eq(user.age, 25))        // ✅ number === number
+   .where(({ user }) => eq(user.name, "John"))   // ✅ string === string  
+   .where(({ user }) => gt(user.age, 18))        // ✅ number > number
+   .select(({ user }) => ({
+     id: user.id,                    // RefProxy<number>
+     nameLength: length(user.name),  // string function
+     isAdult: gt(user.age, 18)      // boolean result
+   }))
+)
+```
+
 ## Key Features
 
 ### ✅ **Type Safety**
 - Full TypeScript support with proper type inference
 - RefProxy objects provide autocomplete for collection properties
 - Compile-time checking of column references and expressions
+- **Smart expression validation**: Functions prefer compatible types (e.g., `eq(user.age, 25)` where both sides are numbers)
+- **IDE support**: RefProxy objects show proper types (`user.age` shows as `RefProxy<number>`)
+- **Flexible but guided**: Accepts any value when needed but provides type hints for the happy path
 
 ### ✅ **Callback-Based API**
 - Clean, readable syntax using destructured parameters
@@ -91,6 +109,7 @@ const query = buildQuery((q) =>
 - Comprehensive set of operators, functions, and aggregates
 - Automatic conversion between RefProxy and Expression objects
 - Support for nested expressions and complex conditions
+- **Type-safe expressions**: Functions validate argument types (e.g., `eq(user.age, 25)` ensures both sides are compatible)
 
 ### ✅ **Fluent Interface**
 - Chainable methods that return new builder instances

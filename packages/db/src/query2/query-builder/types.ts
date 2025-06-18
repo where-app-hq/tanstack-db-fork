@@ -68,14 +68,15 @@ export type RefProxyForContext<TContext extends Context> = {
 // Helper type to create RefProxy for a specific type
 export type RefProxyFor<T> = {
   [K in keyof T]: T[K] extends Record<string, any>
-    ? RefProxyFor<T[K]> 
+    ? RefProxyFor<T[K]> & RefProxy<T[K]>
     : RefProxy<T[K]>
 } & RefProxy<T>
 
-// The core RefProxy interface
+// The core RefProxy interface  
 export interface RefProxy<T = any> {
   readonly __refProxy: true
   readonly __path: string[]
+  readonly __type: T
 }
 
 // Direction for orderBy

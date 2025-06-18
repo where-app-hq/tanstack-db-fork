@@ -15,8 +15,8 @@ const testCollection = new CollectionImpl<Test>({
   id: "test",
   getKey: (item: any) => item.id,
   sync: {
-    sync: () => {} // Mock sync
-  }
+    sync: () => {}, // Mock sync
+  },
 })
 
 // Test 1: Basic from clause
@@ -31,21 +31,19 @@ function testWhere() {
   const builder = new BaseQueryBuilder()
   const query = builder
     .from({ test: testCollection })
-    .where(({ test }) => eq(test.id, 1))
-  
+    .where(({ test }) => eq(test.id, 1)) // ✅ Fixed: number with number
+
   console.log("Where test:", query._getQuery())
 }
 
 // Test 3: Simple select
 function testSelect() {
   const builder = new BaseQueryBuilder()
-  const query = builder
-    .from({ test: testCollection })
-    .select(({ test }) => ({
-      id: test.id,
-      name: test.name
-    }))
-  
+  const query = builder.from({ test: testCollection }).select(({ test }) => ({
+    id: test.id,
+    name: test.name,
+  }))
+
   console.log("Select test:", query._getQuery())
 }
 
@@ -57,22 +55,23 @@ function testGroupBy() {
     .groupBy(({ test }) => test.category)
     .select(({ test }) => ({
       category: test.category,
-      count: count(test.id)
+      count: count(test.id),
     }))
-  
+
   console.log("Group by test:", query._getQuery())
 }
 
 // Test using buildQuery helper
 function testBuildQuery() {
   const query = buildQuery((q) =>
-    q.from({ test: testCollection })
-     .where(({ test }) => eq(test.active, true))
-     .select(({ test }) => ({ id: test.id }))
+    q
+      .from({ test: testCollection })
+      .where(({ test }) => eq(test.active, true))
+      .select(({ test }) => ({ id: test.id }))
   )
-  
+
   console.log("Build query test:", query)
 }
 
 // Export tests
-export { testFrom, testWhere, testSelect, testGroupBy, testBuildQuery } 
+export { testFrom, testWhere, testSelect, testGroupBy, testBuildQuery }
