@@ -37,10 +37,14 @@ export type GroupBy = Array<Expression>
 
 export type Having = Where
 
-export type OrderBy = Array<{
+export type OrderBy = Array<OrderByClause>
+
+export type OrderByClause = {
   expression: Expression
-  direction: `asc` | `desc`
-}>
+  direction: OrderByDirection
+}
+
+export type OrderByDirection = `asc` | `desc`
 
 export type Limit = number
 

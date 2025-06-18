@@ -87,9 +87,6 @@ export interface RefProxy<T = any> {
   readonly __type: T
 }
 
-// Direction for orderBy
-export type OrderDirection = `asc` | `desc`
-
 // Helper type to merge contexts (for joins)
 export type MergeContext<
   TContext extends Context,

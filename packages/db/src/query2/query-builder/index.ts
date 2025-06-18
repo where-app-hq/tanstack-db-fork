@@ -1,7 +1,15 @@
 import { CollectionImpl } from "../../collection.js"
 import { CollectionRef, QueryRef } from "../ir.js"
 import { createRefProxy, isRefProxy, toExpression } from "./ref-proxy.js"
-import type { Agg, Expression, JoinClause, OrderBy, Query } from "../ir.js"
+import type {
+  Agg,
+  Expression,
+  JoinClause,
+  OrderBy,
+  OrderByClause,
+  OrderByDirection,
+  Query,
+} from "../ir.js"
 import type {
   Context,
   GetResult,
@@ -9,7 +17,6 @@ import type {
   JoinOnCallback,
   MergeContext,
   OrderByCallback,
-  OrderDirection,
   RefProxyForContext,
   SchemaFromSource,
   SelectCallback,
@@ -196,14 +203,14 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
   // ORDER BY method
   orderBy(
     callback: OrderByCallback<TContext>,
-    direction: OrderDirection = `asc`
+    direction: OrderByDirection = `asc`
   ): QueryBuilder<TContext> {
     const aliases = this._getCurrentAliases()
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
     const result = callback(refProxy)
 
     // Create the new OrderBy structure with expression and direction
-    const orderByClause: OrderBy[0] = {
+    const orderByClause: OrderByClause = {
       expression: toExpression(result),
       direction,
     }
