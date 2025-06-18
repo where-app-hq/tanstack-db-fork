@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
 import { BaseQueryBuilder } from "../../../src/query2/query-builder/index.js"
-import { eq } from "../../../src/query2/expresions/index.js"
+import { eq } from "../../../src/query2/query-builder/functions.js"
 
 // Test schema
 interface Employee {
@@ -21,39 +21,39 @@ interface Department {
 
 // Test collections
 const employeesCollection = new CollectionImpl<Employee>({
-  id: "employees",
+  id: `employees`,
   getKey: (item) => item.id,
-  sync: { sync: () => {} }
+  sync: { sync: () => {} },
 })
 
 const departmentsCollection = new CollectionImpl<Department>({
-  id: "departments", 
+  id: `departments`,
   getKey: (item) => item.id,
-  sync: { sync: () => {} }
+  sync: { sync: () => {} },
 })
 
-describe("QueryBuilder.from", () => {
-  it("sets the from clause correctly with collection", () => {
+describe(`QueryBuilder.from`, () => {
+  it(`sets the from clause correctly with collection`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder.from({ employees: employeesCollection })
     const builtQuery = query._getQuery()
 
     expect(builtQuery.from).toBeDefined()
-    expect(builtQuery.from.type).toBe("collectionRef")
-    expect(builtQuery.from.alias).toBe("employees")
-    if (builtQuery.from.type === "collectionRef") {
+    expect(builtQuery.from.type).toBe(`collectionRef`)
+    expect(builtQuery.from.alias).toBe(`employees`)
+    if (builtQuery.from.type === `collectionRef`) {
       expect(builtQuery.from.collection).toBe(employeesCollection)
     }
   })
 
-  it("allows chaining other methods after from", () => {
+  it(`allows chaining other methods after from`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
       .where(({ employees }) => eq(employees.id, 1))
       .select(({ employees }) => ({
         id: employees.id,
-        name: employees.name
+        name: employees.name,
       }))
 
     const builtQuery = query._getQuery()
@@ -63,15 +63,15 @@ describe("QueryBuilder.from", () => {
     expect(builtQuery.select).toBeDefined()
   })
 
-  it("supports different collection aliases", () => {
+  it(`supports different collection aliases`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder.from({ emp: employeesCollection })
     const builtQuery = query._getQuery()
 
-    expect(builtQuery.from.alias).toBe("emp")
+    expect(builtQuery.from.alias).toBe(`emp`)
   })
 
-  it("supports sub-queries in from clause", () => {
+  it(`supports sub-queries in from clause`, () => {
     const subQuery = new BaseQueryBuilder()
       .from({ employees: employeesCollection })
       .where(({ employees }) => eq(employees.active, true))
@@ -81,27 +81,27 @@ describe("QueryBuilder.from", () => {
     const builtQuery = query._getQuery()
 
     expect(builtQuery.from).toBeDefined()
-    expect(builtQuery.from.type).toBe("queryRef")
-    expect(builtQuery.from.alias).toBe("activeEmployees")
+    expect(builtQuery.from.type).toBe(`queryRef`)
+    expect(builtQuery.from.alias).toBe(`activeEmployees`)
   })
 
-  it("throws error when sub-query lacks from clause", () => {
+  it(`throws error when sub-query lacks from clause`, () => {
     const incompleteSubQuery = new BaseQueryBuilder()
     const builder = new BaseQueryBuilder()
 
     expect(() => {
       builder.from({ incomplete: incompleteSubQuery as any })
-    }).toThrow("Query must have a from clause")
+    }).toThrow(`Query must have a from clause`)
   })
 
-  it("throws error with multiple sources", () => {
+  it(`throws error with multiple sources`, () => {
     const builder = new BaseQueryBuilder()
 
     expect(() => {
-      builder.from({ 
+      builder.from({
         employees: employeesCollection,
-        departments: departmentsCollection 
+        departments: departmentsCollection,
       } as any)
-    }).toThrow("Only one source is allowed in the from clause")
+    }).toThrow(`Only one source is allowed in the from clause`)
   })
-}) 
+})

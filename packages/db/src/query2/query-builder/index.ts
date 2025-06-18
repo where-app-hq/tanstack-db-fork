@@ -1,30 +1,24 @@
 import { CollectionImpl } from "../../collection.js"
-import { 
-  CollectionRef, 
-  QueryRef, 
-  JoinClause,
-  type Query, 
-  type Expression, 
-  type Agg 
-} from "../ir.js"
-import { createRefProxy, toExpression, isRefProxy } from "./ref-proxy.js"
-import type { 
+import { CollectionRef, QueryRef } from "../ir.js"
+import { createRefProxy, isRefProxy, toExpression } from "./ref-proxy.js"
+import type { Agg, Expression, JoinClause, OrderBy, Query } from "../ir.js"
+import type {
   Context,
-  Source,
-  SchemaFromSource,
-  WhereCallback,
-  SelectCallback,
-  OrderByCallback,
+  GetResult,
   GroupByCallback,
   JoinOnCallback,
-  OrderDirection,
   MergeContext,
+  OrderByCallback,
+  OrderDirection,
+  RefProxyForContext,
+  SchemaFromSource,
+  SelectCallback,
+  Source,
+  WhereCallback,
   WithResult,
-  GetResult,
-  RefProxyForContext
 } from "./types.js"
 
-export function buildQuery<TResult = any>(
+export function buildQuery(
   fn: (builder: InitialQueryBuilder) => QueryBuilder<any>
 ): Query {
   const result = fn(new BaseQueryBuilder())
@@ -47,24 +41,26 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     hasJoins: false
   }> {
     if (Object.keys(source).length !== 1) {
-      throw new Error("Only one source is allowed in the from clause")
+      throw new Error(`Only one source is allowed in the from clause`)
     }
-    
+
     const alias = Object.keys(source)[0]! as keyof TSource & string
     const sourceValue = source[alias]
-    
+
     let from: CollectionRef | QueryRef
-    
+
     if (sourceValue instanceof CollectionImpl) {
       from = new CollectionRef(sourceValue, alias)
     } else if (sourceValue instanceof BaseQueryBuilder) {
       const subQuery = sourceValue._getQuery()
-      if (!subQuery.from) {
-        throw new Error("A sub query passed to a from clause must have a from clause itself")
+      if (!(subQuery as Partial<Query>).from) {
+        throw new Error(
+          `A sub query passed to a from clause must have a from clause itself`
+        )
       }
       from = new QueryRef(subQuery, alias)
     } else {
-      throw new Error("Invalid source")
+      throw new Error(`Invalid source`)
     }
 
     return new BaseQueryBuilder({
@@ -76,90 +72,96 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
   // JOIN method
   join<TSource extends Source>(
     source: TSource,
-    onCallback: JoinOnCallback<MergeContext<TContext, SchemaFromSource<TSource>>>,
-    type: 'inner' | 'left' | 'right' | 'full' | 'cross' = 'inner'
+    onCallback: JoinOnCallback<
+      MergeContext<TContext, SchemaFromSource<TSource>>
+    >,
+    type: `inner` | `left` | `right` | `full` | `cross` = `inner`
   ): QueryBuilder<MergeContext<TContext, SchemaFromSource<TSource>>> {
     if (Object.keys(source).length !== 1) {
-      throw new Error("Only one source is allowed in the join clause")
+      throw new Error(`Only one source is allowed in the join clause`)
     }
-    
+
     const alias = Object.keys(source)[0]!
     const sourceValue = source[alias]
-    
+
     let from: CollectionRef | QueryRef
-    
+
     if (sourceValue instanceof CollectionImpl) {
       from = new CollectionRef(sourceValue, alias)
     } else if (sourceValue instanceof BaseQueryBuilder) {
       const subQuery = sourceValue._getQuery()
-      if (!subQuery.from) {
-        throw new Error("A sub query passed to a join clause must have a from clause itself")
+      if (!(subQuery as Partial<Query>).from) {
+        throw new Error(
+          `A sub query passed to a join clause must have a from clause itself`
+        )
       }
       from = new QueryRef(subQuery, alias)
     } else {
-      throw new Error("Invalid source")
+      throw new Error(`Invalid source`)
     }
 
     // Create a temporary context for the callback
     const currentAliases = this._getCurrentAliases()
     const newAliases = [...currentAliases, alias]
-    const refProxy = createRefProxy(newAliases) as RefProxyForContext<MergeContext<TContext, SchemaFromSource<TSource>>>
-    
+    const refProxy = createRefProxy(newAliases) as RefProxyForContext<
+      MergeContext<TContext, SchemaFromSource<TSource>>
+    >
+
     // Get the join condition expression
     const onExpression = onCallback(refProxy)
-    
+
     // Extract left and right from the expression
     // For now, we'll assume it's an eq function with two arguments
     let left: Expression
     let right: Expression
-    
-    if (onExpression.type === 'func' && onExpression.name === 'eq' && onExpression.args.length === 2) {
+
+    if (
+      onExpression.type === `func` &&
+      onExpression.name === `eq` &&
+      onExpression.args.length === 2
+    ) {
       left = onExpression.args[0]!
       right = onExpression.args[1]!
     } else {
-      throw new Error("Join condition must be an equality expression")
+      throw new Error(`Join condition must be an equality expression`)
     }
 
     const joinClause: JoinClause = {
       from,
       type,
       left,
-      right
+      right,
     }
 
     const existingJoins = this.query.join || []
-    
+
     return new BaseQueryBuilder({
       ...this.query,
-      join: [...existingJoins, joinClause]
+      join: [...existingJoins, joinClause],
     }) as any
   }
 
   // WHERE method
-  where(
-    callback: WhereCallback<TContext>
-  ): QueryBuilder<TContext> {
+  where(callback: WhereCallback<TContext>): QueryBuilder<TContext> {
     const aliases = this._getCurrentAliases()
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
     const expression = callback(refProxy)
 
     return new BaseQueryBuilder({
       ...this.query,
-      where: expression
+      where: expression,
     }) as any
   }
 
   // HAVING method
-  having(
-    callback: WhereCallback<TContext>
-  ): QueryBuilder<TContext> {
+  having(callback: WhereCallback<TContext>): QueryBuilder<TContext> {
     const aliases = this._getCurrentAliases()
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
     const expression = callback(refProxy)
 
     return new BaseQueryBuilder({
       ...this.query,
-      having: expression
+      having: expression,
     }) as any
   }
 
@@ -176,9 +178,9 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     for (const [key, value] of Object.entries(selectObject)) {
       if (isRefProxy(value)) {
         select[key] = toExpression(value)
-      } else if (value && typeof value === 'object' && value.type === 'agg') {
+      } else if (value && typeof value === `object` && value.type === `agg`) {
         select[key] = value as Agg
-      } else if (value && typeof value === 'object' && value.type === 'func') {
+      } else if (value && typeof value === `object` && value.type === `func`) {
         select[key] = value as Expression
       } else {
         select[key] = toExpression(value)
@@ -187,44 +189,46 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
 
     return new BaseQueryBuilder({
       ...this.query,
-      select
+      select,
     }) as any
   }
 
   // ORDER BY method
   orderBy(
     callback: OrderByCallback<TContext>,
-    direction: OrderDirection = 'asc'
+    direction: OrderDirection = `asc`
   ): QueryBuilder<TContext> {
     const aliases = this._getCurrentAliases()
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
     const result = callback(refProxy)
 
-    // For now, we'll store order by as an array of expressions
-    // The direction will need to be handled by the compiler
-    const orderBy = [toExpression(result)]
+    // Create the new OrderBy structure with expression and direction
+    const orderByClause: OrderBy[0] = {
+      expression: toExpression(result),
+      direction,
+    }
+
+    const existingOrderBy: OrderBy = this.query.orderBy || []
 
     return new BaseQueryBuilder({
       ...this.query,
-      orderBy
+      orderBy: [...existingOrderBy, orderByClause],
     }) as any
   }
 
   // GROUP BY method
-  groupBy(
-    callback: GroupByCallback<TContext>
-  ): QueryBuilder<TContext> {
+  groupBy(callback: GroupByCallback<TContext>): QueryBuilder<TContext> {
     const aliases = this._getCurrentAliases()
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
     const result = callback(refProxy)
 
-    const groupBy = Array.isArray(result) 
-      ? result.map(r => toExpression(r))
+    const groupBy = Array.isArray(result)
+      ? result.map((r) => toExpression(r))
       : [toExpression(result)]
 
     return new BaseQueryBuilder({
       ...this.query,
-      groupBy
+      groupBy,
     }) as any
   }
 
@@ -232,7 +236,7 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
   limit(count: number): QueryBuilder<TContext> {
     return new BaseQueryBuilder({
       ...this.query,
-      limit: count
+      limit: count,
     }) as any
   }
 
@@ -240,43 +244,43 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
   offset(count: number): QueryBuilder<TContext> {
     return new BaseQueryBuilder({
       ...this.query,
-      offset: count
+      offset: count,
     }) as any
   }
 
   // Helper methods
-  private _getCurrentAliases(): string[] {
-    const aliases: string[] = []
-    
+  private _getCurrentAliases(): Array<string> {
+    const aliases: Array<string> = []
+
     // Add the from alias
     if (this.query.from) {
       aliases.push(this.query.from.alias)
     }
-    
+
     // Add join aliases
     if (this.query.join) {
       for (const join of this.query.join) {
         aliases.push(join.from.alias)
       }
     }
-    
+
     return aliases
   }
 
   _getQuery(): Query {
     if (!this.query.from) {
-      throw new Error("Query must have a from clause")
+      throw new Error(`Query must have a from clause`)
     }
     return this.query as Query
   }
 }
 
 // Type-only exports for the query builder
-export type InitialQueryBuilder = Pick<BaseQueryBuilder, "from">
+export type InitialQueryBuilder = Pick<BaseQueryBuilder, `from`>
 
 export type QueryBuilder<TContext extends Context> = Omit<
   BaseQueryBuilder<TContext>,
-  "from"
+  `from`
 > & {
   // Make sure we can access the result type
   readonly __context: TContext

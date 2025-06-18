@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
 import { BaseQueryBuilder } from "../../../src/query2/query-builder/index.js"
-import { eq, upper, count, avg } from "../../../src/query2/expresions/index.js"
+import {
+  avg,
+  count,
+  eq,
+  upper,
+} from "../../../src/query2/query-builder/functions.js"
 
 // Test schema
 interface Employee {
@@ -14,62 +19,62 @@ interface Employee {
 
 // Test collection
 const employeesCollection = new CollectionImpl<Employee>({
-  id: "employees",
+  id: `employees`,
   getKey: (item) => item.id,
-  sync: { sync: () => {} }
+  sync: { sync: () => {} },
 })
 
-describe("QueryBuilder.select", () => {
-  it("sets the select clause correctly with simple properties", () => {
+describe(`QueryBuilder.select`, () => {
+  it(`sets the select clause correctly with simple properties`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
       .select(({ employees }) => ({
         id: employees.id,
-        name: employees.name
+        name: employees.name,
       }))
 
     const builtQuery = query._getQuery()
     expect(builtQuery.select).toBeDefined()
-    expect(typeof builtQuery.select).toBe("object")
-    expect(builtQuery.select).toHaveProperty("id")
-    expect(builtQuery.select).toHaveProperty("name")
+    expect(typeof builtQuery.select).toBe(`object`)
+    expect(builtQuery.select).toHaveProperty(`id`)
+    expect(builtQuery.select).toHaveProperty(`name`)
   })
 
-  it("handles aliased expressions", () => {
+  it(`handles aliased expressions`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
       .select(({ employees }) => ({
         id: employees.id,
         employee_name: employees.name,
-        salary_doubled: employees.salary
+        salary_doubled: employees.salary,
       }))
 
     const builtQuery = query._getQuery()
     expect(builtQuery.select).toBeDefined()
-    expect(builtQuery.select).toHaveProperty("employee_name")
-    expect(builtQuery.select).toHaveProperty("salary_doubled")
+    expect(builtQuery.select).toHaveProperty(`employee_name`)
+    expect(builtQuery.select).toHaveProperty(`salary_doubled`)
   })
 
-  it("handles function calls in select", () => {
+  it(`handles function calls in select`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
       .select(({ employees }) => ({
         id: employees.id,
-        upper_name: upper(employees.name)
+        upper_name: upper(employees.name),
       }))
 
     const builtQuery = query._getQuery()
     expect(builtQuery.select).toBeDefined()
-    expect(builtQuery.select).toHaveProperty("upper_name")
+    expect(builtQuery.select).toHaveProperty(`upper_name`)
     const upperNameExpr = (builtQuery.select as any).upper_name
-    expect(upperNameExpr.type).toBe("func")
-    expect(upperNameExpr.name).toBe("upper")
+    expect(upperNameExpr.type).toBe(`func`)
+    expect(upperNameExpr.name).toBe(`upper`)
   })
 
-  it("supports aggregate functions", () => {
+  it(`supports aggregate functions`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
@@ -77,69 +82,69 @@ describe("QueryBuilder.select", () => {
       .select(({ employees }) => ({
         department_id: employees.department_id,
         count: count(employees.id),
-        avg_salary: avg(employees.salary)
+        avg_salary: avg(employees.salary),
       }))
 
     const builtQuery = query._getQuery()
     expect(builtQuery.select).toBeDefined()
-    expect(builtQuery.select).toHaveProperty("count")
-    expect(builtQuery.select).toHaveProperty("avg_salary")
+    expect(builtQuery.select).toHaveProperty(`count`)
+    expect(builtQuery.select).toHaveProperty(`avg_salary`)
   })
 
-  it("overrides previous select calls", () => {
+  it(`overrides previous select calls`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
       .select(({ employees }) => ({
         id: employees.id,
-        name: employees.name
+        name: employees.name,
       }))
       .select(({ employees }) => ({
         id: employees.id,
-        salary: employees.salary
+        salary: employees.salary,
       })) // This should override the previous select
 
     const builtQuery = query._getQuery()
     expect(builtQuery.select).toBeDefined()
-    expect(builtQuery.select).toHaveProperty("id")
-    expect(builtQuery.select).toHaveProperty("salary")
-    expect(builtQuery.select).not.toHaveProperty("name")
+    expect(builtQuery.select).toHaveProperty(`id`)
+    expect(builtQuery.select).toHaveProperty(`salary`)
+    expect(builtQuery.select).not.toHaveProperty(`name`)
   })
 
-  it("supports selecting entire records", () => {
+  it(`supports selecting entire records`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
       .select(({ employees }) => ({
-        employee: employees
+        employee: employees,
       }))
 
     const builtQuery = query._getQuery()
     expect(builtQuery.select).toBeDefined()
-    expect(builtQuery.select).toHaveProperty("employee")
+    expect(builtQuery.select).toHaveProperty(`employee`)
   })
 
-  it("handles complex nested selections", () => {
+  it(`handles complex nested selections`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
       .select(({ employees }) => ({
         basicInfo: {
           id: employees.id,
-          name: employees.name
+          name: employees.name,
         },
         salary: employees.salary,
-        upper_name: upper(employees.name)
+        upper_name: upper(employees.name),
       }))
 
     const builtQuery = query._getQuery()
     expect(builtQuery.select).toBeDefined()
-    expect(builtQuery.select).toHaveProperty("basicInfo")
-    expect(builtQuery.select).toHaveProperty("salary")
-    expect(builtQuery.select).toHaveProperty("upper_name")
+    expect(builtQuery.select).toHaveProperty(`basicInfo`)
+    expect(builtQuery.select).toHaveProperty(`salary`)
+    expect(builtQuery.select).toHaveProperty(`upper_name`)
   })
 
-  it("allows combining with other methods", () => {
+  it(`allows combining with other methods`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
@@ -147,29 +152,29 @@ describe("QueryBuilder.select", () => {
       .select(({ employees }) => ({
         id: employees.id,
         name: employees.name,
-        salary: employees.salary
+        salary: employees.salary,
       }))
 
     const builtQuery = query._getQuery()
     expect(builtQuery.where).toBeDefined()
     expect(builtQuery.select).toBeDefined()
-    expect(builtQuery.select).toHaveProperty("id")
-    expect(builtQuery.select).toHaveProperty("name")
-    expect(builtQuery.select).toHaveProperty("salary")
+    expect(builtQuery.select).toHaveProperty(`id`)
+    expect(builtQuery.select).toHaveProperty(`name`)
+    expect(builtQuery.select).toHaveProperty(`salary`)
   })
 
-  it("supports conditional expressions", () => {
+  it(`supports conditional expressions`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
       .select(({ employees }) => ({
         id: employees.id,
         name: employees.name,
-        is_high_earner: employees.salary // Would need conditional logic in actual implementation
+        is_high_earner: employees.salary, // Would need conditional logic in actual implementation
       }))
 
     const builtQuery = query._getQuery()
     expect(builtQuery.select).toBeDefined()
-    expect(builtQuery.select).toHaveProperty("is_high_earner")
+    expect(builtQuery.select).toHaveProperty(`is_high_earner`)
   })
-}) 
+})

@@ -1,7 +1,7 @@
 // Simple test for the new query builder
 import { CollectionImpl } from "../collection.js"
 import { BaseQueryBuilder, buildQuery } from "./query-builder/index.js"
-import { eq, count } from "./expresions/index.js"
+import { count, eq } from "./query-builder/functions.js"
 
 interface Test {
   id: number
@@ -12,7 +12,7 @@ interface Test {
 
 // Simple test collection
 const testCollection = new CollectionImpl<Test>({
-  id: "test",
+  id: `test`,
   getKey: (item: any) => item.id,
   sync: {
     sync: () => {}, // Mock sync
@@ -23,7 +23,7 @@ const testCollection = new CollectionImpl<Test>({
 function testFrom() {
   const builder = new BaseQueryBuilder()
   const query = builder.from({ test: testCollection })
-  console.log("From test:", query._getQuery())
+  console.log(`From test:`, query._getQuery())
 }
 
 // Test 2: Simple where clause
@@ -33,7 +33,7 @@ function testWhere() {
     .from({ test: testCollection })
     .where(({ test }) => eq(test.id, 1)) // ✅ Fixed: number with number
 
-  console.log("Where test:", query._getQuery())
+  console.log(`Where test:`, query._getQuery())
 }
 
 // Test 3: Simple select
@@ -44,7 +44,7 @@ function testSelect() {
     name: test.name,
   }))
 
-  console.log("Select test:", query._getQuery())
+  console.log(`Select test:`, query._getQuery())
 }
 
 // Test 4: Group by and aggregation
@@ -58,7 +58,7 @@ function testGroupBy() {
       count: count(test.id),
     }))
 
-  console.log("Group by test:", query._getQuery())
+  console.log(`Group by test:`, query._getQuery())
 }
 
 // Test using buildQuery helper
@@ -70,7 +70,7 @@ function testBuildQuery() {
       .select(({ test }) => ({ id: test.id }))
   )
 
-  console.log("Build query test:", query)
+  console.log(`Build query test:`, query)
 }
 
 // Export tests

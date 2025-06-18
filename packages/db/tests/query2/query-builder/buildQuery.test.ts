@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
 import { buildQuery } from "../../../src/query2/query-builder/index.js"
-import { eq, gt, and, or } from "../../../src/query2/expresions/index.js"
+import { and, eq, gt, or } from "../../../src/query2/query-builder/functions.js"
 
 // Test schema
 interface Employee {
@@ -20,45 +20,48 @@ interface Department {
 
 // Test collections
 const employeesCollection = new CollectionImpl<Employee>({
-  id: "employees",
+  id: `employees`,
   getKey: (item) => item.id,
-  sync: { sync: () => {} }
+  sync: { sync: () => {} },
 })
 
 const departmentsCollection = new CollectionImpl<Department>({
-  id: "departments",
+  id: `departments`,
   getKey: (item) => item.id,
-  sync: { sync: () => {} }
+  sync: { sync: () => {} },
 })
 
-describe("buildQuery function", () => {
-  it("creates a simple query", () => {
+describe(`buildQuery function`, () => {
+  it(`creates a simple query`, () => {
     const query = buildQuery((q) =>
-      q.from({ employees: employeesCollection })
+      q
+        .from({ employees: employeesCollection })
         .where(({ employees }) => eq(employees.active, true))
         .select(({ employees }) => ({
           id: employees.id,
-          name: employees.name
+          name: employees.name,
         }))
     )
 
     // buildQuery returns Query IR directly
     expect(query.from).toBeDefined()
-    expect(query.from.type).toBe("collectionRef")
+    expect(query.from.type).toBe(`collectionRef`)
     expect(query.where).toBeDefined()
     expect(query.select).toBeDefined()
   })
 
-  it("creates a query with join", () => {
+  it(`creates a query with join`, () => {
     const query = buildQuery((q) =>
-      q.from({ employees: employeesCollection })
+      q
+        .from({ employees: employeesCollection })
         .join(
           { departments: departmentsCollection },
-          ({ employees, departments }) => eq(employees.department_id, departments.id)
+          ({ employees, departments }) =>
+            eq(employees.department_id, departments.id)
         )
         .select(({ employees, departments }) => ({
           employee_name: employees.name,
-          department_name: departments.name
+          department_name: departments.name,
         }))
     )
 
@@ -68,19 +71,19 @@ describe("buildQuery function", () => {
     expect(query.select).toBeDefined()
   })
 
-  it("creates a query with multiple conditions", () => {
+  it(`creates a query with multiple conditions`, () => {
     const query = buildQuery((q) =>
-      q.from({ employees: employeesCollection })
-        .where(({ employees }) => and(
-          eq(employees.active, true),
-          gt(employees.salary, 50000)
-        ))
+      q
+        .from({ employees: employeesCollection })
+        .where(({ employees }) =>
+          and(eq(employees.active, true), gt(employees.salary, 50000))
+        )
         .orderBy(({ employees }) => employees.name)
         .limit(10)
         .select(({ employees }) => ({
           id: employees.id,
           name: employees.name,
-          salary: employees.salary
+          salary: employees.salary,
         }))
     )
 
@@ -91,30 +94,32 @@ describe("buildQuery function", () => {
     expect(query.select).toBeDefined()
   })
 
-  it("works as described in the README example", () => {
-    const commentsCollection = new CollectionImpl<{ id: number; user_id: number; content: string; date: string }>({
-      id: "comments",
+  it(`works as described in the README example`, () => {
+    const commentsCollection = new CollectionImpl<{
+      id: number
+      user_id: number
+      content: string
+      date: string
+    }>({
+      id: `comments`,
       getKey: (item) => item.id,
-      sync: { sync: () => {} }
+      sync: { sync: () => {} },
     })
 
     const usersCollection = new CollectionImpl<{ id: number; name: string }>({
-      id: "users", 
+      id: `users`,
       getKey: (item) => item.id,
-      sync: { sync: () => {} }
+      sync: { sync: () => {} },
     })
 
     const query = buildQuery((q) =>
-      q.from({ comment: commentsCollection })
-        .join(
-          { user: usersCollection },
-          ({ comment, user }) => eq(comment.user_id, user.id)
+      q
+        .from({ comment: commentsCollection })
+        .join({ user: usersCollection }, ({ comment, user }) =>
+          eq(comment.user_id, user.id)
         )
-        .where(({ comment }) => or(
-          eq(comment.id, 1),
-          eq(comment.id, 2)
-        ))
-        .orderBy(({ comment }) => comment.date, 'desc')
+        .where(({ comment }) => or(eq(comment.id, 1), eq(comment.id, 2)))
+        .orderBy(({ comment }) => comment.date, `desc`)
         .select(({ comment, user }) => ({
           id: comment.id,
           content: comment.content,
@@ -127,10 +132,10 @@ describe("buildQuery function", () => {
     expect(query.where).toBeDefined()
     expect(query.orderBy).toBeDefined()
     expect(query.select).toBeDefined()
-    
+
     const select = query.select!
-    expect(select).toHaveProperty("id")
-    expect(select).toHaveProperty("content")
-    expect(select).toHaveProperty("user")
+    expect(select).toHaveProperty(`id`)
+    expect(select).toHaveProperty(`content`)
+    expect(select).toHaveProperty(`user`)
   })
-}) 
+})

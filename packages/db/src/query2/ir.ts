@@ -2,7 +2,7 @@
 This is the intermediate representation of the query.
 */
 
-import { CollectionImpl } from "../collection"
+import type { CollectionImpl } from "../collection"
 
 export interface Query {
   from: From
@@ -26,7 +26,7 @@ export type Join = Array<JoinClause>
 
 export interface JoinClause {
   from: CollectionRef | QueryRef
-  type: 'left' | 'right' | 'inner' | 'outer' | 'full' | 'cross'
+  type: `left` | `right` | `inner` | `outer` | `full` | `cross`
   left: Expression
   right: Expression
 }
@@ -37,7 +37,10 @@ export type GroupBy = Array<Expression>
 
 export type Having = Where
 
-export type OrderBy = Array<Expression>
+export type OrderBy = Array<{
+  expression: Expression
+  direction: `asc` | `desc`
+}>
 
 export type Limit = number
 
@@ -50,7 +53,7 @@ abstract class BaseExpression {
 }
 
 export class CollectionRef extends BaseExpression {
-  public type = 'collectionRef' as const
+  public type = `collectionRef` as const
   constructor(
     public collection: CollectionImpl,
     public alias: string
@@ -60,7 +63,7 @@ export class CollectionRef extends BaseExpression {
 }
 
 export class QueryRef extends BaseExpression {
-  public type = 'queryRef' as const
+  public type = `queryRef` as const
   constructor(
     public query: Query,
     public alias: string
@@ -70,7 +73,7 @@ export class QueryRef extends BaseExpression {
 }
 
 export class Ref extends BaseExpression {
-  public type = 'ref' as const
+  public type = `ref` as const
   constructor(
     public path: Array<string> // path to the property in the collection, with the alias as the first element
   ) {
@@ -79,7 +82,7 @@ export class Ref extends BaseExpression {
 }
 
 export class Value extends BaseExpression {
-  public type = 'val' as const
+  public type = `val` as const
   constructor(
     public value: unknown // any js value
   ) {
@@ -88,7 +91,7 @@ export class Value extends BaseExpression {
 }
 
 export class Func extends BaseExpression {
-  public type = 'func' as const
+  public type = `func` as const
   constructor(
     public name: string, // such as eq, gt, lt, upper, lower, etc.
     public args: Array<Expression>
@@ -100,7 +103,7 @@ export class Func extends BaseExpression {
 export type Expression = Ref | Value | Func
 
 export class Agg extends BaseExpression {
-  public type = 'agg' as const
+  public type = `agg` as const
   constructor(
     public name: string, // such as count, avg, sum, min, max, etc.
     public args: Array<Expression>
