@@ -4,7 +4,7 @@ import type { QueryBuilder } from "./index.js"
 export interface Context {
   // The collections available in the base schema
   baseSchema: Record<string, any>
-  // The current schema available (includes joined collections)  
+  // The current schema available (includes joined collections)
   schema: Record<string, any>
   // Whether this query has joins
   hasJoins?: boolean
@@ -17,15 +17,16 @@ export type Source = {
 }
 
 // Helper type to infer collection type from CollectionImpl
-export type InferCollectionType<T> = T extends CollectionImpl<infer U> ? U : never
+export type InferCollectionType<T> =
+  T extends CollectionImpl<infer U> ? U : never
 
 // Helper type to create schema from source
 export type SchemaFromSource<T extends Source> = {
-  [K in keyof T]: T[K] extends CollectionImpl<infer U> 
-    ? U 
+  [K in keyof T]: T[K] extends CollectionImpl<infer U>
+    ? U
     : T[K] extends QueryBuilder<infer C>
-      ? C extends { result: infer R } 
-        ? R 
+      ? C extends { result: infer R }
+        ? R
         : C extends { schema: infer S }
           ? S
           : never
@@ -33,14 +34,14 @@ export type SchemaFromSource<T extends Source> = {
 }
 
 // Helper type to get all aliases from a context
-export type GetAliases<TContext extends Context> = keyof TContext['schema']
+export type GetAliases<TContext extends Context> = keyof TContext["schema"]
 
 // Callback type for where/having clauses
 export type WhereCallback<TContext extends Context> = (
   refs: RefProxyForContext<TContext>
 ) => any
 
-// Callback type for select clauses  
+// Callback type for select clauses
 export type SelectCallback<TContext extends Context> = (
   refs: RefProxyForContext<TContext>
 ) => Record<string, any>
@@ -50,7 +51,7 @@ export type OrderByCallback<TContext extends Context> = (
   refs: RefProxyForContext<TContext>
 ) => any
 
-// Callback type for groupBy clauses  
+// Callback type for groupBy clauses
 export type GroupByCallback<TContext extends Context> = (
   refs: RefProxyForContext<TContext>
 ) => any
@@ -66,39 +67,50 @@ export type RefProxyForContext<TContext extends Context> = {
 }
 
 // Helper type to create RefProxy for a specific type
-export type RefProxyFor<T> = {
+export type RefProxyFor<T> = OmitRefProxy<{
   [K in keyof T]: T[K] extends Record<string, any>
     ? RefProxyFor<T[K]> & RefProxy<T[K]>
     : RefProxy<T[K]>
-} & RefProxy<T>
+} & RefProxy<T>>
 
-// The core RefProxy interface  
+type OmitRefProxy<T> = Omit<T, "__refProxy" | "__path" | "__type">
+
+// The core RefProxy interface
 export interface RefProxy<T = any> {
+  /** @internal */
   readonly __refProxy: true
+  /** @internal */
   readonly __path: string[]
+  /** @internal */
   readonly __type: T
 }
 
 // Direction for orderBy
-export type OrderDirection = 'asc' | 'desc'
+export type OrderDirection = "asc" | "desc"
 
 // Helper type to merge contexts (for joins)
-export type MergeContext<TContext extends Context, TNewSchema extends Record<string, any>> = {
-  baseSchema: TContext['baseSchema']
-  schema: TContext['schema'] & TNewSchema
+export type MergeContext<
+  TContext extends Context,
+  TNewSchema extends Record<string, any>,
+> = {
+  baseSchema: TContext["baseSchema"]
+  schema: TContext["schema"] & TNewSchema
   hasJoins: true
-  result: TContext['result']
+  result: TContext["result"]
 }
 
 // Helper type for updating context with result type
-export type WithResult<TContext extends Context, TResult> = Omit<TContext, 'result'> & {
+export type WithResult<TContext extends Context, TResult> = Omit<
+  TContext,
+  "result"
+> & {
   result: TResult
 }
 
 // Helper type to get the result type from a context
-export type GetResult<TContext extends Context> = 
-  TContext['result'] extends undefined
-    ? TContext['hasJoins'] extends true
-      ? TContext['schema']
-      : TContext['schema']
-    : TContext['result']
+export type GetResult<TContext extends Context> =
+  TContext["result"] extends undefined
+    ? TContext["hasJoins"] extends true
+      ? TContext["schema"]
+      : TContext["schema"]
+    : TContext["result"]

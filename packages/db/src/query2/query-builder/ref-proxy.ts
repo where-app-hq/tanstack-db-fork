@@ -1,8 +1,11 @@
 import { Ref, Value, type Expression } from '../ir.js'
 
 export interface RefProxy<T = any> {
+  /** @internal */
   readonly __refProxy: true
+  /** @internal */  
   readonly __path: string[]
+  /** @internal */
   readonly __type: T
 }
 
