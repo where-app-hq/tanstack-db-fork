@@ -1,4 +1,4 @@
-import type { Expression, Ref, Value, Func, Agg } from "../ir.js"
+import type { Agg, Expression, Func, Ref, Value } from "../ir.js"
 import type { NamespacedRow } from "../../types.js"
 
 /**
@@ -9,14 +9,16 @@ export function evaluateExpression(
   namespacedRow: NamespacedRow
 ): any {
   switch (expression.type) {
-    case "ref":
-      return evaluateRef(expression as Ref, namespacedRow)
-    case "val":
-      return evaluateValue(expression as Value)
-    case "func":
-      return evaluateFunction(expression as Func, namespacedRow)
-    case "agg":
-      throw new Error("Aggregate functions should be handled in GROUP BY processing")
+    case `ref`:
+      return evaluateRef(expression, namespacedRow)
+    case `val`:
+      return evaluateValue(expression)
+    case `func`:
+      return evaluateFunction(expression, namespacedRow)
+    case `agg`:
+      throw new Error(
+        `Aggregate functions should be handled in GROUP BY processing`
+      )
     default:
       throw new Error(`Unknown expression type: ${(expression as any).type}`)
   }
@@ -27,9 +29,9 @@ export function evaluateExpression(
  */
 function evaluateRef(ref: Ref, namespacedRow: NamespacedRow): any {
   const [tableAlias, ...propertyPath] = ref.path
-  
+
   if (!tableAlias) {
-    throw new Error("Reference path cannot be empty")
+    throw new Error(`Reference path cannot be empty`)
   }
 
   const tableData = namespacedRow[tableAlias]
@@ -43,7 +45,7 @@ function evaluateRef(ref: Ref, namespacedRow: NamespacedRow): any {
     if (value === null || value === undefined) {
       return undefined
     }
-    if (typeof value === "object" && prop in value) {
+    if (typeof value === `object` && prop in value) {
       value = (value as any)[prop]
     } else {
       return undefined
@@ -64,31 +66,31 @@ function evaluateValue(value: Value): any {
  * Evaluates a function expression
  */
 function evaluateFunction(func: Func, namespacedRow: NamespacedRow): any {
-  const args = func.args.map(arg => evaluateExpression(arg, namespacedRow))
+  const args = func.args.map((arg) => evaluateExpression(arg, namespacedRow))
 
   switch (func.name) {
     // Comparison operators
-    case "eq":
+    case `eq`:
       return args[0] === args[1]
-    case "gt":
+    case `gt`:
       return compareValues(args[0], args[1]) > 0
-    case "gte":
+    case `gte`:
       return compareValues(args[0], args[1]) >= 0
-    case "lt":
+    case `lt`:
       return compareValues(args[0], args[1]) < 0
-    case "lte":
+    case `lte`:
       return compareValues(args[0], args[1]) <= 0
 
     // Boolean operators
-    case "and":
-      return args.every(arg => Boolean(arg))
-    case "or":
-      return args.some(arg => Boolean(arg))
-    case "not":
-      return !Boolean(args[0])
+    case `and`:
+      return args.every((arg) => Boolean(arg))
+    case `or`:
+      return args.some((arg) => Boolean(arg))
+    case `not`:
+      return !args[0]
 
     // Array operators
-    case "in":
+    case `in`:
       const value = args[0]
       const array = args[1]
       if (!Array.isArray(array)) {
@@ -97,31 +99,31 @@ function evaluateFunction(func: Func, namespacedRow: NamespacedRow): any {
       return array.includes(value)
 
     // String operators
-    case "like":
+    case `like`:
       return evaluateLike(args[0], args[1], false)
-    case "ilike":
+    case `ilike`:
       return evaluateLike(args[0], args[1], true)
 
     // String functions
-    case "upper":
-      return typeof args[0] === "string" ? args[0].toUpperCase() : args[0]
-    case "lower":
-      return typeof args[0] === "string" ? args[0].toLowerCase() : args[0]
-    case "length":
-      return typeof args[0] === "string" ? args[0].length : 0
-    case "concat":
-      return args.map(arg => String(arg ?? "")).join("")
-    case "coalesce":
-      return args.find(arg => arg !== null && arg !== undefined) ?? null
+    case `upper`:
+      return typeof args[0] === `string` ? args[0].toUpperCase() : args[0]
+    case `lower`:
+      return typeof args[0] === `string` ? args[0].toLowerCase() : args[0]
+    case `length`:
+      return typeof args[0] === `string` ? args[0].length : 0
+    case `concat`:
+      return args.map((arg) => String(arg ?? ``)).join(``)
+    case `coalesce`:
+      return args.find((arg) => arg !== null && arg !== undefined) ?? null
 
     // Math functions
-    case "add":
+    case `add`:
       return (args[0] ?? 0) + (args[1] ?? 0)
-    case "subtract":
+    case `subtract`:
       return (args[0] ?? 0) - (args[1] ?? 0)
-    case "multiply":
+    case `multiply`:
       return (args[0] ?? 0) * (args[1] ?? 0)
-    case "divide":
+    case `divide`:
       const divisor = args[1] ?? 0
       return divisor !== 0 ? (args[0] ?? 0) / divisor : null
 
@@ -141,10 +143,10 @@ function compareValues(a: any, b: any): number {
 
   // Handle same types
   if (typeof a === typeof b) {
-    if (typeof a === "string") {
+    if (typeof a === `string`) {
       return a.localeCompare(b)
     }
-    if (typeof a === "number") {
+    if (typeof a === `number`) {
       return a - b
     }
     if (a instanceof Date && b instanceof Date) {
@@ -159,8 +161,12 @@ function compareValues(a: any, b: any): number {
 /**
  * Evaluates LIKE/ILIKE patterns
  */
-function evaluateLike(value: any, pattern: any, caseInsensitive: boolean): boolean {
-  if (typeof value !== "string" || typeof pattern !== "string") {
+function evaluateLike(
+  value: any,
+  pattern: any,
+  caseInsensitive: boolean
+): boolean {
+  if (typeof value !== `string` || typeof pattern !== `string`) {
     return false
   }
 
@@ -169,12 +175,12 @@ function evaluateLike(value: any, pattern: any, caseInsensitive: boolean): boole
 
   // Convert SQL LIKE pattern to regex
   // First escape all regex special chars except % and _
-  let regexPattern = searchPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  
+  let regexPattern = searchPattern.replace(/[.*+?^${}()|[\]\\]/g, `\\$&`)
+
   // Then convert SQL wildcards to regex
-  regexPattern = regexPattern.replace(/%/g, '.*') // % matches any sequence
-  regexPattern = regexPattern.replace(/_/g, '.') // _ matches any single char
+  regexPattern = regexPattern.replace(/%/g, `.*`) // % matches any sequence
+  regexPattern = regexPattern.replace(/_/g, `.`) // _ matches any single char
 
   const regex = new RegExp(`^${regexPattern}$`)
   return regex.test(searchValue)
-} 
+}

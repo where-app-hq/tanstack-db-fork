@@ -1,8 +1,9 @@
 import { describe, expect, test } from "vitest"
 import { D2, MultiSet, output } from "@electric-sql/d2mini"
 import { compileQuery } from "../../../src/query2/compiler/index.js"
-import { CollectionRef, Ref, Value, Query } from "../../../src/query2/ir.js"
-import { CollectionImpl } from "../../../src/collection.js"
+import { CollectionRef, Ref, Value } from "../../../src/query2/ir.js"
+import type { Query } from "../../../src/query2/ir.js"
+import type { CollectionImpl } from "../../../src/collection.js"
 
 // Sample user type for tests
 type User = {
@@ -15,29 +16,29 @@ type User = {
 
 // Sample data for tests
 const sampleUsers: Array<User> = [
-  { id: 1, name: "Alice", age: 25, email: "alice@example.com", active: true },
-  { id: 2, name: "Bob", age: 19, email: "bob@example.com", active: true },
+  { id: 1, name: `Alice`, age: 25, email: `alice@example.com`, active: true },
+  { id: 2, name: `Bob`, age: 19, email: `bob@example.com`, active: true },
   {
     id: 3,
-    name: "Charlie",
+    name: `Charlie`,
     age: 30,
-    email: "charlie@example.com",
+    email: `charlie@example.com`,
     active: false,
   },
-  { id: 4, name: "Dave", age: 22, email: "dave@example.com", active: true },
+  { id: 4, name: `Dave`, age: 22, email: `dave@example.com`, active: true },
 ]
 
-describe("Query2 Compiler", () => {
-  describe("Basic Compilation", () => {
-    test("compiles a simple FROM query", () => {
+describe(`Query2 Compiler`, () => {
+  describe(`Basic Compilation`, () => {
+    test(`compiles a simple FROM query`, () => {
       // Create a mock collection
       const usersCollection = {
-        id: "users",
+        id: `users`,
       } as CollectionImpl
 
       // Create the IR query
       const query: Query = {
-        from: new CollectionRef(usersCollection, "users"),
+        from: new CollectionRef(usersCollection, `users`),
       }
 
       const graph = new D2()
@@ -73,17 +74,17 @@ describe("Query2 Compiler", () => {
       expect(results).toContainEqual([4, sampleUsers[3]])
     })
 
-    test("compiles a simple SELECT query", () => {
+    test(`compiles a simple SELECT query`, () => {
       const usersCollection = {
-        id: "users",
+        id: `users`,
       } as CollectionImpl
 
       const query: Query = {
-        from: new CollectionRef(usersCollection, "users"),
+        from: new CollectionRef(usersCollection, `users`),
         select: {
-          id: new Ref(["users", "id"]),
-          name: new Ref(["users", "name"]),
-          age: new Ref(["users", "age"]),
+          id: new Ref([`users`, `id`]),
+          name: new Ref([`users`, `name`]),
+          age: new Ref([`users`, `age`]),
         },
       }
 
@@ -113,7 +114,7 @@ describe("Query2 Compiler", () => {
         1,
         {
           id: 1,
-          name: "Alice",
+          name: `Alice`,
           age: 25,
         },
       ])
@@ -122,7 +123,7 @@ describe("Query2 Compiler", () => {
         2,
         {
           id: 2,
-          name: "Bob",
+          name: `Bob`,
           age: 19,
         },
       ])
@@ -130,26 +131,26 @@ describe("Query2 Compiler", () => {
       // Check that all users are included and have the correct structure
       expect(results).toHaveLength(4)
       results.forEach(([_key, result]) => {
-        expect(Object.keys(result).sort()).toEqual(["id", "name", "age"].sort())
+        expect(Object.keys(result).sort()).toEqual([`id`, `name`, `age`].sort())
       })
     })
 
-    test("compiles a query with WHERE clause", () => {
+    test(`compiles a query with WHERE clause`, () => {
       const usersCollection = {
-        id: "users",
+        id: `users`,
       } as CollectionImpl
 
       const query: Query = {
-        from: new CollectionRef(usersCollection, "users"),
+        from: new CollectionRef(usersCollection, `users`),
         select: {
-          id: new Ref(["users", "id"]),
-          name: new Ref(["users", "name"]),
-          age: new Ref(["users", "age"]),
+          id: new Ref([`users`, `id`]),
+          name: new Ref([`users`, `name`]),
+          age: new Ref([`users`, `age`]),
         },
         where: {
-          type: "func",
-          name: "gt",
-          args: [new Ref(["users", "age"]), new Value(20)],
+          type: `func`,
+          name: `gt`,
+          args: [new Ref([`users`, `age`]), new Value(20)],
         },
       }
 
@@ -188,30 +189,30 @@ describe("Query2 Compiler", () => {
       expect(includedIds).toEqual([1, 3, 4]) // Alice, Charlie, Dave
     })
 
-    test("compiles a query with complex WHERE clause", () => {
+    test(`compiles a query with complex WHERE clause`, () => {
       const usersCollection = {
-        id: "users",
+        id: `users`,
       } as CollectionImpl
 
       const query: Query = {
-        from: new CollectionRef(usersCollection, "users"),
+        from: new CollectionRef(usersCollection, `users`),
         select: {
-          id: new Ref(["users", "id"]),
-          name: new Ref(["users", "name"]),
+          id: new Ref([`users`, `id`]),
+          name: new Ref([`users`, `name`]),
         },
         where: {
-          type: "func",
-          name: "and",
+          type: `func`,
+          name: `and`,
           args: [
             {
-              type: "func",
-              name: "gt",
-              args: [new Ref(["users", "age"]), new Value(20)],
+              type: `func`,
+              name: `gt`,
+              args: [new Ref([`users`, `age`]), new Value(20)],
             },
             {
-              type: "func",
-              name: "eq",
-              args: [new Ref(["users", "active"]), new Value(true)],
+              type: `func`,
+              name: `eq`,
+              args: [new Ref([`users`, `active`]), new Value(true)],
             },
           ],
         },
@@ -254,4 +255,4 @@ describe("Query2 Compiler", () => {
       expect(includedIds).toEqual([1, 4]) // Alice, Dave
     })
   })
-}) 
+})

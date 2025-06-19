@@ -5,21 +5,21 @@ import {
   map,
 } from "@electric-sql/d2mini"
 import { evaluateExpression } from "./evaluators.js"
-import type { JoinClause, CollectionRef, QueryRef } from "../ir.js"
+import { compileQuery } from "./index.js"
+import type { CollectionRef, JoinClause, QueryRef } from "../ir.js"
 import type { IStreamBuilder, JoinType } from "@electric-sql/d2mini"
 import type {
   KeyedStream,
   NamespacedAndKeyedStream,
   NamespacedRow,
 } from "../../types.js"
-import { compileQuery } from "./index.js"
 
 /**
  * Processes all join clauses in a query
  */
 export function processJoins(
   pipeline: NamespacedAndKeyedStream,
-  joinClauses: JoinClause[],
+  joinClauses: Array<JoinClause>,
   tables: Record<string, KeyedStream>,
   mainTableAlias: string,
   allInputs: Record<string, KeyedStream>
@@ -59,15 +59,19 @@ function processJoin(
   tables[joinedTableAlias] = joinedInput
 
   // Convert join type to D2 join type
-  const joinType: JoinType = joinClause.type === "cross" ? "inner" : 
-    joinClause.type === "outer" ? "full" : joinClause.type as JoinType
+  const joinType: JoinType =
+    joinClause.type === `cross`
+      ? `inner`
+      : joinClause.type === `outer`
+        ? `full`
+        : (joinClause.type as JoinType)
 
   // Prepare the main pipeline for joining
   const mainPipeline = pipeline.pipe(
     map(([currentKey, namespacedRow]) => {
       // Extract the join key from the left side of the join condition
       const leftKey = evaluateExpression(joinClause.left, namespacedRow)
-      
+
       // Return [joinKey, [originalKey, namespacedRow]]
       return [leftKey, [currentKey, namespacedRow]] as [
         unknown,
@@ -81,10 +85,10 @@ function processJoin(
     map(([currentKey, row]) => {
       // Wrap the row in a namespaced structure
       const namespacedRow: NamespacedRow = { [joinedTableAlias]: row }
-      
+
       // Extract the join key from the right side of the join condition
       const rightKey = evaluateExpression(joinClause.right, namespacedRow)
-      
+
       // Return [joinKey, [originalKey, namespacedRow]]
       return [rightKey, [currentKey, namespacedRow]] as [
         unknown,
@@ -95,27 +99,27 @@ function processJoin(
 
   // Apply the join operation
   switch (joinType) {
-    case "inner":
+    case `inner`:
       return mainPipeline.pipe(
-        joinOperator(joinedPipeline, "inner"),
+        joinOperator(joinedPipeline, `inner`),
         consolidate(),
         processJoinResults(joinClause.type)
       )
-    case "left":
+    case `left`:
       return mainPipeline.pipe(
-        joinOperator(joinedPipeline, "left"),
+        joinOperator(joinedPipeline, `left`),
         consolidate(),
         processJoinResults(joinClause.type)
       )
-    case "right":
+    case `right`:
       return mainPipeline.pipe(
-        joinOperator(joinedPipeline, "right"),
+        joinOperator(joinedPipeline, `right`),
         consolidate(),
         processJoinResults(joinClause.type)
       )
-    case "full":
+    case `full`:
       return mainPipeline.pipe(
-        joinOperator(joinedPipeline, "full"),
+        joinOperator(joinedPipeline, `full`),
         consolidate(),
         processJoinResults(joinClause.type)
       )
@@ -131,15 +135,17 @@ function processJoinSource(
   from: CollectionRef | QueryRef,
   allInputs: Record<string, KeyedStream>
 ): { alias: string; input: KeyedStream } {
-  if (from.type === "collectionRef") {
-    const collectionRef = from as CollectionRef
+  if (from.type === `collectionRef`) {
+    const collectionRef = from
     const input = allInputs[collectionRef.collection.id]
     if (!input) {
-      throw new Error(`Input for collection "${collectionRef.collection.id}" not found in inputs map`)
+      throw new Error(
+        `Input for collection "${collectionRef.collection.id}" not found in inputs map`
+      )
     }
     return { alias: collectionRef.alias, input }
-  } else if (from.type === "queryRef") {
-    const queryRef = from as QueryRef
+  } else if (from.type === `queryRef`) {
+    const queryRef = from
     // Recursively compile the sub-query
     const subQueryInput = compileQuery(queryRef.query, allInputs)
     return { alias: queryRef.alias, input: subQueryInput as KeyedStream }
@@ -171,15 +177,15 @@ function processJoinResults(joinType: string) {
         const joinedNamespacedRow = joined?.[1]
 
         // Handle different join types
-        if (joinType === "inner" || joinType === "cross") {
+        if (joinType === `inner` || joinType === `cross`) {
           return !!(mainNamespacedRow && joinedNamespacedRow)
         }
 
-        if (joinType === "left") {
+        if (joinType === `left`) {
           return !!mainNamespacedRow
         }
 
-        if (joinType === "right") {
+        if (joinType === `right`) {
           return !!joinedNamespacedRow
         }
 
@@ -207,10 +213,10 @@ function processJoinResults(joinType: string) {
         }
 
         // Use the main key if available, otherwise use the joined key
-        const resultKey = mainKey || joinedKey || ""
+        const resultKey = mainKey || joinedKey || ``
 
         return [resultKey, mergedNamespacedRow] as [string, NamespacedRow]
       })
     )
   }
-} 
+}

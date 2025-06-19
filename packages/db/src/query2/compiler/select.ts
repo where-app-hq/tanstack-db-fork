@@ -1,10 +1,10 @@
 import { map } from "@electric-sql/d2mini"
 import { evaluateExpression } from "./evaluators.js"
-import type { Select, Expression, Agg } from "../ir.js"
-import type { 
-  NamespacedAndKeyedStream, 
-  NamespacedRow, 
+import type { Agg, Expression, Select } from "../ir.js"
+import type {
   KeyedStream,
+  NamespacedAndKeyedStream,
+  NamespacedRow,
 } from "../../types.js"
 
 /**
@@ -21,12 +21,12 @@ export function processSelect(
 
       // Process each selected field
       for (const [alias, expression] of Object.entries(selectClause)) {
-        if (expression.type === "agg") {
+        if (expression.type === `agg`) {
           // Handle aggregate functions
-          result[alias] = evaluateAggregate(expression as Agg, namespacedRow)
+          result[alias] = evaluateAggregate(expression, namespacedRow)
         } else {
           // Handle regular expressions
-          result[alias] = evaluateExpression(expression as Expression, namespacedRow)
+          result[alias] = evaluateExpression(expression, namespacedRow)
         }
       }
 
@@ -45,24 +45,26 @@ function evaluateAggregate(agg: Agg, namespacedRow: NamespacedRow): any {
   // This is not correct for real aggregation, but serves as a placeholder
   const arg = agg.args[0]
   if (!arg) {
-    throw new Error(`Aggregate function ${agg.name} requires at least one argument`)
+    throw new Error(
+      `Aggregate function ${agg.name} requires at least one argument`
+    )
   }
 
   const value = evaluateExpression(arg, namespacedRow)
 
   switch (agg.name) {
-    case "count":
+    case `count`:
       // For single row, count is always 1 if value is not null
       return value != null ? 1 : 0
 
-    case "sum":
-    case "avg":
-    case "min":
-    case "max":
+    case `sum`:
+    case `avg`:
+    case `min`:
+    case `max`:
       // For single row, these functions just return the value
       return value
 
     default:
       throw new Error(`Unknown aggregate function: ${agg.name}`)
   }
-} 
+}

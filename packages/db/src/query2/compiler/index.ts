@@ -4,7 +4,7 @@ import { processJoins } from "./joins.js"
 import { processGroupBy } from "./group-by.js"
 import { processOrderBy } from "./order-by.js"
 import { processSelect } from "./select.js"
-import type { Query, CollectionRef, QueryRef } from "../ir.js"
+import type { CollectionRef, Query, QueryRef } from "../ir.js"
 import type { IStreamBuilder } from "@electric-sql/d2mini"
 import type {
   InputRow,
@@ -29,7 +29,10 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
   const tables: Record<string, KeyedStream> = {}
 
   // Process the FROM clause to get the main table
-  const { alias: mainTableAlias, input: mainInput } = processFrom(query.from, allInputs)
+  const { alias: mainTableAlias, input: mainInput } = processFrom(
+    query.from,
+    allInputs
+  )
   tables[mainTableAlias] = mainInput
 
   // Prepare the initial pipeline with the main table wrapped in its alias
@@ -66,11 +69,16 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
 
   // Process the GROUP BY clause if it exists
   if (query.groupBy && query.groupBy.length > 0) {
-    pipeline = processGroupBy(pipeline, query.groupBy, query.having, query.select)
-    
+    pipeline = processGroupBy(
+      pipeline,
+      query.groupBy,
+      query.having,
+      query.select
+    )
+
     // Process the HAVING clause if it exists (only applies after GROUP BY)
     if (query.having && (!query.groupBy || query.groupBy.length === 0)) {
-      throw new Error("HAVING clause requires GROUP BY clause")
+      throw new Error(`HAVING clause requires GROUP BY clause`)
     }
 
     // Process orderBy parameter if it exists
@@ -89,7 +97,7 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
 
   // Process the HAVING clause if it exists (only applies after GROUP BY)
   if (query.having) {
-    throw new Error("HAVING clause requires GROUP BY clause")
+    throw new Error(`HAVING clause requires GROUP BY clause`)
   }
 
   // Process orderBy parameter if it exists
@@ -108,7 +116,10 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
     : // If no select clause, return the main table data directly
       !query.join && !query.groupBy
       ? pipeline.pipe(
-          map(([key, namespacedRow]) => [key, namespacedRow[mainTableAlias]] as InputRow)
+          map(
+            ([key, namespacedRow]) =>
+              [key, namespacedRow[mainTableAlias]] as InputRow
+          )
         )
       : pipeline
 
@@ -122,15 +133,17 @@ function processFrom(
   from: CollectionRef | QueryRef,
   allInputs: Record<string, KeyedStream>
 ): { alias: string; input: KeyedStream } {
-  if (from.type === "collectionRef") {
-    const collectionRef = from as CollectionRef
+  if (from.type === `collectionRef`) {
+    const collectionRef = from
     const input = allInputs[collectionRef.collection.id]
     if (!input) {
-      throw new Error(`Input for collection "${collectionRef.collection.id}" not found in inputs map`)
+      throw new Error(
+        `Input for collection "${collectionRef.collection.id}" not found in inputs map`
+      )
     }
     return { alias: collectionRef.alias, input }
-  } else if (from.type === "queryRef") {
-    const queryRef = from as QueryRef
+  } else if (from.type === `queryRef`) {
+    const queryRef = from
     // Recursively compile the sub-query
     const subQueryInput = compileQuery(queryRef.query, allInputs)
     return { alias: queryRef.alias, input: subQueryInput as KeyedStream }

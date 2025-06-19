@@ -1,23 +1,32 @@
 import { D2, MultiSet, output } from "@electric-sql/d2mini"
-import { createCollection, type Collection } from "../collection.js"
+import { createCollection } from "../collection.js"
 import { compileQuery } from "./compiler/index.js"
-import { buildQuery, type QueryBuilder, type InitialQueryBuilder } from "./query-builder/index.js"
+import { buildQuery } from "./query-builder/index.js"
 import type {
-  CollectionConfig,
-  SyncConfig,
+  InitialQueryBuilder,
+  QueryBuilder,
+} from "./query-builder/index.js"
+import type { Collection } from "../collection.js"
+import type {
   ChangeMessage,
+  CollectionConfig,
   KeyedStream,
+  SyncConfig,
   UtilsRecord,
 } from "../types.js"
 import type { Context, GetResult } from "./query-builder/types.js"
-import type { IStreamBuilder, MultiSetArray, RootStreamBuilder } from "@electric-sql/d2mini"
+import type {
+  IStreamBuilder,
+  MultiSetArray,
+  RootStreamBuilder,
+} from "@electric-sql/d2mini"
 
 // Global counter for auto-generated collection IDs
 let liveQueryCollectionCounter = 0
 
 /**
  * Configuration interface for live query collection options
- * 
+ *
  * @example
  * ```typescript
  * const config: LiveQueryCollectionConfig<any, any> = {
@@ -41,7 +50,7 @@ let liveQueryCollectionCounter = 0
  */
 export interface LiveQueryCollectionConfig<
   TContext extends Context,
-  TResult extends object = GetResult<TContext> & object
+  TResult extends object = GetResult<TContext> & object,
 > {
   /**
    * Unique identifier for the collection
@@ -75,7 +84,7 @@ export interface LiveQueryCollectionConfig<
 
 /**
  * Creates live query collection options for use with createCollection
- * 
+ *
  * @example
  * ```typescript
  * const options = liveQueryCollectionOptions({
@@ -90,7 +99,7 @@ export interface LiveQueryCollectionConfig<
  *     })),
  *   // getKey is optional - will use stream key if not provided
  * })
- * 
+ *
  * const collection = createCollection(options)
  * ```
  *
@@ -100,13 +109,13 @@ export interface LiveQueryCollectionConfig<
 export function liveQueryCollectionOptions<
   TContext extends Context,
   TResult extends object = GetResult<TContext> & object,
-  TUtils extends UtilsRecord = {}
+  TUtils extends UtilsRecord = {},
 >(
   config: LiveQueryCollectionConfig<TContext, TResult>
 ): CollectionConfig<TResult & { _key?: string | number }> & { utils?: TUtils } {
   // Generate a unique ID if not provided
   const id = config.id || `live-query-${++liveQueryCollectionCounter}`
-  
+
   // Build the query using the provided query builder function
   const query = buildQuery(config.query)
 
@@ -115,7 +124,7 @@ export function liveQueryCollectionOptions<
     sync: ({ begin, write, commit }) => {
       // Extract collections from the query
       const collections = extractCollectionsFromQuery(query)
-      
+
       // Create D2 graph and inputs
       const graph = new D2()
       const inputs = Object.fromEntries(
@@ -151,8 +160,10 @@ export function liveQueryCollectionOptions<
             }, new Map<unknown, { deletes: number; inserts: number; value: TResult }>())
             .forEach((changes, rawKey) => {
               const { deletes, inserts, value } = changes
-              const valueWithKey = { ...value, _key: rawKey } as TResult & { _key: string | number }
-              
+              const valueWithKey = { ...value, _key: rawKey } as TResult & {
+                _key: string | number
+              }
+
               if (inserts && !deletes) {
                 write({
                   value: valueWithKey,
@@ -180,7 +191,7 @@ export function liveQueryCollectionOptions<
       // Set up data flow from input collections to the compiled query
       Object.entries(collections).forEach(([collectionId, collection]) => {
         const input = inputs[collectionId]!
-        
+
         // Send initial state
         sendChangesToInput(
           input,
@@ -212,20 +223,20 @@ export function liveQueryCollectionOptions<
 
 /**
  * Creates a live query collection directly
- * 
+ *
  * @example
  * ```typescript
- * // Simple usage - id and getKey both optional
- * const activeCommentsCollection = createLiveQueryCollection({
- *   query: (q) => q
- *     .from({ comment: commentsCollection })
- *     .where(({ comment }) => eq(comment.active, true))
- *     .select(({ comment }) => comment),
- * })
- * 
- * // With custom id, getKey and utilities
- * const searchResultsCollection = createLiveQueryCollection({
- *   id: "search-results", // Custom ID (optional)
+ * // Minimal usage - just pass a query function
+ * const activeUsers = createLiveQueryCollection(
+ *   (q) => q
+ *     .from({ user: usersCollection })
+ *     .where(({ user }) => eq(user.active, true))
+ *     .select(({ user }) => ({ id: user.id, name: user.name }))
+ * )
+ *
+ * // Full configuration with custom options
+ * const searchResults = createLiveQueryCollection({
+ *   id: "search-results", // Custom ID (auto-generated if omitted)
  *   query: (q) => q
  *     .from({ post: postsCollection })
  *     .where(({ post }) => like(post.title, `%${searchTerm}%`))
@@ -234,31 +245,73 @@ export function liveQueryCollectionOptions<
  *       title: post.title,
  *       excerpt: post.excerpt,
  *     })),
- *   getKey: (item) => item.id, // Custom key extraction
+ *   getKey: (item) => item.id, // Custom key function (uses stream key if omitted)
  *   utils: {
  *     updateSearchTerm: (newTerm: string) => {
- *       // Custom utility function
+ *       // Custom utility functions
  *     }
  *   }
  * })
  * ```
- *
- * @param config - Configuration options for the live query collection
- * @returns A new Collection instance with the live query
  */
+
+// Overload 1: Accept just the query function
 export function createLiveQueryCollection<
   TContext extends Context,
   TResult extends object = GetResult<TContext> & object,
-  TUtils extends UtilsRecord = {}
+>(
+  query: (q: InitialQueryBuilder) => QueryBuilder<TContext>
+): Collection<TResult & { _key?: string | number }, string | number, {}>
+
+// Overload 2: Accept full config object with optional utilities
+export function createLiveQueryCollection<
+  TContext extends Context,
+  TResult extends object = GetResult<TContext> & object,
+  TUtils extends UtilsRecord = {},
 >(
   config: LiveQueryCollectionConfig<TContext, TResult> & { utils?: TUtils }
+): Collection<TResult & { _key?: string | number }, string | number, TUtils>
+
+// Implementation
+export function createLiveQueryCollection<
+  TContext extends Context,
+  TResult extends object = GetResult<TContext> & object,
+  TUtils extends UtilsRecord = {},
+>(
+  configOrQuery:
+    | (LiveQueryCollectionConfig<TContext, TResult> & { utils?: TUtils })
+    | ((q: InitialQueryBuilder) => QueryBuilder<TContext>)
 ): Collection<TResult & { _key?: string | number }, string | number, TUtils> {
-  const options = liveQueryCollectionOptions<TContext, TResult, TUtils>(config)
-  
-  return createCollection({
-    ...options,
-    utils: config.utils,
-  })
+  // Determine if the argument is a function (query) or a config object
+  if (typeof configOrQuery === `function`) {
+    // Simple query function case
+    const config: LiveQueryCollectionConfig<TContext, TResult> = {
+      query: configOrQuery,
+    }
+    const options = liveQueryCollectionOptions<TContext, TResult>(config)
+
+    return createCollection({
+      ...options,
+    }) as Collection<
+      TResult & { _key?: string | number },
+      string | number,
+      TUtils
+    >
+  } else {
+    // Config object case
+    const config = configOrQuery as LiveQueryCollectionConfig<
+      TContext,
+      TResult
+    > & { utils?: TUtils }
+    const options = liveQueryCollectionOptions<TContext, TResult, TUtils>(
+      config
+    )
+
+    return createCollection({
+      ...options,
+      utils: config.utils,
+    })
+  }
 }
 
 /**
@@ -292,21 +345,20 @@ function sendChangesToInput(
  */
 function extractCollectionsFromQuery(query: any): Record<string, any> {
   const collections: Record<string, any> = {}
-  
+
   // Extract from FROM clause
-  if (query.from && query.from.type === "collectionRef") {
+  if (query.from && query.from.type === `collectionRef`) {
     collections[query.from.collection.id] = query.from.collection
   }
-  
+
   // Extract from JOIN clauses
   if (query.join && Array.isArray(query.join)) {
     for (const joinClause of query.join) {
-      if (joinClause.from && joinClause.from.type === "collectionRef") {
+      if (joinClause.from && joinClause.from.type === `collectionRef`) {
         collections[joinClause.from.collection.id] = joinClause.from.collection
       }
     }
   }
-  
+
   return collections
 }
-

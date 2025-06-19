@@ -35,7 +35,7 @@ export function processOrderBy(
     if (b == null) return 1
 
     // if a and b are both strings, compare them based on locale
-    if (typeof a === "string" && typeof b === "string") {
+    if (typeof a === `string` && typeof b === `string`) {
       return a.localeCompare(b)
     }
 
@@ -57,7 +57,7 @@ export function processOrderBy(
     }
 
     // If at least one of the values is an object, convert to strings
-    const bothObjects = typeof a === "object" && typeof b === "object"
+    const bothObjects = typeof a === `object` && typeof b === `object`
     const notNull = a !== null && b !== null
     if (bothObjects && notNull) {
       return a.toString().localeCompare(b.toString())
@@ -81,7 +81,8 @@ export function processOrderBy(
         const arrayB = b as Array<unknown>
         for (let i = 0; i < orderByClause.length; i++) {
           const direction = orderByClause[i]!.direction
-          const compareFn = direction === "desc" ? descComparator : ascComparator
+          const compareFn =
+            direction === `desc` ? descComparator : ascComparator
           const result = compareFn(arrayA[i], arrayB[i])
           if (result !== 0) {
             return result
@@ -93,7 +94,7 @@ export function processOrderBy(
       // Single property comparison
       if (orderByClause.length === 1) {
         const direction = orderByClause[0]!.direction
-        return direction === "desc" ? descComparator(a, b) : ascComparator(a, b)
+        return direction === `desc` ? descComparator(a, b) : ascComparator(a, b)
       }
 
       return ascComparator(a, b)
@@ -103,7 +104,5 @@ export function processOrderBy(
   const comparator = makeComparator()
 
   // Apply the orderBy operator
-  return pipeline.pipe(
-    orderBy(valueExtractor, { comparator })
-  )
-} 
+  return pipeline.pipe(orderBy(valueExtractor, { comparator }))
+}
