@@ -52,3 +52,13 @@ export type {
   QueryRef,
   JoinClause,
 } from "./ir.js"
+
+// Compiler
+export { compileQuery } from "./compiler/index.js"
+
+// Live query collection utilities
+export {
+  createLiveQueryCollection,
+  liveQueryCollectionOptions,
+  type LiveQueryCollectionConfig,
+} from "./live-query-collection.js"
