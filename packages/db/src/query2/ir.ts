@@ -31,7 +31,7 @@ export interface JoinClause {
   right: Expression
 }
 
-export type Where = Expression
+export type Where = Expression<boolean>
 
 export type GroupBy = Array<Expression>
 
@@ -52,8 +52,10 @@ export type Offset = number
 
 /* Expressions */
 
-abstract class BaseExpression {
+abstract class BaseExpression<T = any> {
   public abstract type: string
+  /** @internal - Type brand for TypeScript inference */
+  declare readonly __returnType: T
 }
 
 export class CollectionRef extends BaseExpression {
@@ -76,7 +78,7 @@ export class QueryRef extends BaseExpression {
   }
 }
 
-export class Ref extends BaseExpression {
+export class Ref<T = any> extends BaseExpression<T> {
   public type = `ref` as const
   constructor(
     public path: Array<string> // path to the property in the collection, with the alias as the first element
@@ -85,16 +87,16 @@ export class Ref extends BaseExpression {
   }
 }
 
-export class Value extends BaseExpression {
+export class Value<T = any> extends BaseExpression<T> {
   public type = `val` as const
   constructor(
-    public value: unknown // any js value
+    public value: T // any js value
   ) {
     super()
   }
 }
 
-export class Func extends BaseExpression {
+export class Func<T = any> extends BaseExpression<T> {
   public type = `func` as const
   constructor(
     public name: string, // such as eq, gt, lt, upper, lower, etc.
@@ -104,9 +106,9 @@ export class Func extends BaseExpression {
   }
 }
 
-export type Expression = Ref | Value | Func
+export type Expression<T = any> = Ref<T> | Value<T> | Func<T>
 
-export class Agg extends BaseExpression {
+export class Agg<T = any> extends BaseExpression<T> {
   public type = `agg` as const
   constructor(
     public name: string, // such as count, avg, sum, min, max, etc.

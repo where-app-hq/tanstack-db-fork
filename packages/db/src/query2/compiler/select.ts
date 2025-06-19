@@ -1,6 +1,6 @@
 import { map } from "@electric-sql/d2mini"
 import { evaluateExpression } from "./evaluators.js"
-import type { Agg, Expression, Select } from "../ir.js"
+import type { Agg, Select } from "../ir.js"
 import type {
   KeyedStream,
   NamespacedAndKeyedStream,

@@ -103,9 +103,16 @@ export function createRefProxy<T extends Record<string, any>>(
  * Converts a value to an Expression
  * If it's a RefProxy, creates a Ref, otherwise creates a Value
  */
-export function toExpression(value: any): Expression {
+export function toExpression<T = any>(value: T): Expression<T>
+export function toExpression(value: RefProxy<any>): Expression<any>
+export function toExpression(value: any): Expression<any> {
   if (isRefProxy(value)) {
     return new Ref(value.__path)
+  }
+  // If it's already an Expression (Func, Ref, Value), return it directly
+  if (value && typeof value === 'object' && 'type' in value && 
+      (value.type === 'func' || value.type === 'ref' || value.type === 'val')) {
+    return value
   }
   return new Value(value)
 }
@@ -120,6 +127,6 @@ export function isRefProxy(value: any): value is RefProxy {
 /**
  * Helper to create a Value expression from a literal
  */
-export function val(value: any): Expression {
+export function val<T>(value: T): Expression<T> {
   return new Value(value)
 }
