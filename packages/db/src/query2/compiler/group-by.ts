@@ -6,6 +6,54 @@ import type { NamespacedAndKeyedStream, NamespacedRow } from "../../types.js"
 const { sum, count, avg, min, max } = groupByOperators
 
 /**
+ * Interface for caching the mapping between GROUP BY expressions and SELECT expressions
+ */
+interface GroupBySelectMapping {
+  selectToGroupByIndex: Map<string, number> // Maps SELECT alias to GROUP BY expression index
+  groupByExpressions: Array<any> // The GROUP BY expressions for reference
+}
+
+/**
+ * Validates that all non-aggregate expressions in SELECT are present in GROUP BY
+ * and creates a cached mapping for efficient lookup during processing
+ */
+function validateAndCreateMapping(
+  groupByClause: GroupBy,
+  selectClause?: Select
+): GroupBySelectMapping {
+  const selectToGroupByIndex = new Map<string, number>()
+  const groupByExpressions = [...groupByClause]
+
+  if (!selectClause) {
+    return { selectToGroupByIndex, groupByExpressions }
+  }
+
+  // Validate each SELECT expression
+  for (const [alias, expr] of Object.entries(selectClause)) {
+    if (expr.type === "agg") {
+      // Aggregate expressions are allowed and don't need to be in GROUP BY
+      continue
+    }
+
+    // Non-aggregate expression must be in GROUP BY
+    const groupIndex = groupByExpressions.findIndex((groupExpr) =>
+      expressionsEqual(expr, groupExpr)
+    )
+
+    if (groupIndex === -1) {
+      throw new Error(
+        `Non-aggregate expression '${alias}' in SELECT must also appear in GROUP BY clause`
+      )
+    }
+
+    // Cache the mapping
+    selectToGroupByIndex.set(alias, groupIndex)
+  }
+
+  return { selectToGroupByIndex, groupByExpressions }
+}
+
+/**
  * Processes the GROUP BY clause and optional HAVING clause
  * This function handles the entire SELECT clause for GROUP BY queries
  */
@@ -15,15 +63,18 @@ export function processGroupBy(
   havingClause?: Having,
   selectClause?: Select
 ): NamespacedAndKeyedStream {
-  // Create a key extractor function for the groupBy operator
+  // Validate and create mapping once at the beginning
+  const mapping = validateAndCreateMapping(groupByClause, selectClause)
+
+  // Create a key extractor function using simple __key_X format
   const keyExtractor = ([_oldKey, namespacedRow]: [string, NamespacedRow]) => {
     const key: Record<string, unknown> = {}
 
-    // Extract each groupBy expression value
+    // Use simple __key_X format for each groupBy expression
     for (let i = 0; i < groupByClause.length; i++) {
       const expr = groupByClause[i]!
       const value = evaluateExpression(expr, namespacedRow)
-      key[`group_${i}`] = value
+      key[`__key_${i}`] = value
     }
 
     return key
@@ -35,7 +86,7 @@ export function processGroupBy(
   if (selectClause) {
     // Scan the SELECT clause for aggregate functions
     for (const [alias, expr] of Object.entries(selectClause)) {
-      if (expr.type === `agg`) {
+      if (expr.type === "agg") {
         const aggExpr = expr
         aggregates[alias] = getAggregateFunction(aggExpr)
       }
@@ -49,29 +100,37 @@ export function processGroupBy(
   if (selectClause) {
     pipeline = pipeline.pipe(
       map(([key, aggregatedRow]) => {
-        const result: Record<string, any> = { ...aggregatedRow }
+        const result: Record<string, any> = {}
 
-        // For non-aggregate expressions in SELECT, we need to evaluate them based on the group key
+        // For non-aggregate expressions in SELECT, use cached mapping
         for (const [alias, expr] of Object.entries(selectClause)) {
-          if (expr.type !== `agg`) {
-            // For non-aggregate expressions, try to extract from the group key
-            // Find which group-by expression matches this SELECT expression
-            const groupIndex = groupByClause.findIndex((groupExpr) =>
-              expressionsEqual(expr, groupExpr)
-            )
-            if (groupIndex >= 0) {
-              // Extract value from the key object
-              const keyObj = key as Record<string, unknown>
-              result[alias] = keyObj[`group_${groupIndex}`]
+          if (expr.type !== "agg") {
+            // Use cached mapping to get the corresponding __key_X
+            const groupIndex = mapping.selectToGroupByIndex.get(alias)
+            if (groupIndex !== undefined) {
+              result[alias] = aggregatedRow[`__key_${groupIndex}`]
             } else {
-              // If it's not a group-by expression, we can't reliably get it
-              // This would typically be an error in SQL
+              // This should never happen due to validation, but handle gracefully
               result[alias] = null
             }
+          } else {
+            result[alias] = aggregatedRow[alias]
           }
         }
 
-        return [key, result] as [string, Record<string, any>]
+        // Generate a simple key for the live collection using group values
+        let finalKey: unknown
+        if (groupByClause.length === 1) {
+          finalKey = aggregatedRow[`__key_0`]
+        } else {
+          const keyParts: unknown[] = []
+          for (let i = 0; i < groupByClause.length; i++) {
+            keyParts.push(aggregatedRow[`__key_${i}`])
+          }
+          finalKey = JSON.stringify(keyParts)
+        }
+
+        return [finalKey, result] as [unknown, Record<string, any>]
       })
     )
   }
@@ -92,26 +151,32 @@ export function processGroupBy(
  * Helper function to check if two expressions are equal
  */
 function expressionsEqual(expr1: any, expr2: any): boolean {
+  if (!expr1 || !expr2) return false
   if (expr1.type !== expr2.type) return false
 
   switch (expr1.type) {
-    case `ref`:
-      return JSON.stringify(expr1.path) === JSON.stringify(expr2.path)
-    case `val`:
+    case "ref":
+      // Compare paths as arrays
+      if (!expr1.path || !expr2.path) return false
+      if (expr1.path.length !== expr2.path.length) return false
+      return expr1.path.every(
+        (segment: string, i: number) => segment === expr2.path[i]
+      )
+    case "val":
       return expr1.value === expr2.value
-    case `func`:
+    case "func":
       return (
         expr1.name === expr2.name &&
-        expr1.args.length === expr2.args.length &&
-        expr1.args.every((arg: any, i: number) =>
+        expr1.args?.length === expr2.args?.length &&
+        (expr1.args || []).every((arg: any, i: number) =>
           expressionsEqual(arg, expr2.args[i])
         )
       )
-    case `agg`:
+    case "agg":
       return (
         expr1.name === expr2.name &&
-        expr1.args.length === expr2.args.length &&
-        expr1.args.every((arg: any, i: number) =>
+        expr1.args?.length === expr2.args?.length &&
+        (expr1.args || []).every((arg: any, i: number) =>
           expressionsEqual(arg, expr2.args[i])
         )
       )
@@ -131,20 +196,20 @@ function getAggregateFunction(aggExpr: Agg) {
   ]) => {
     const value = evaluateExpression(aggExpr.args[0]!, namespacedRow)
     // Ensure we return a number for numeric aggregate functions
-    return typeof value === `number` ? value : value != null ? Number(value) : 0
+    return typeof value === "number" ? value : value != null ? Number(value) : 0
   }
 
   // Return the appropriate aggregate function
   switch (aggExpr.name.toLowerCase()) {
-    case `sum`:
+    case "sum":
       return sum(valueExtractor)
-    case `count`:
+    case "count":
       return count() // count() doesn't need a value extractor
-    case `avg`:
+    case "avg":
       return avg(valueExtractor)
-    case `min`:
+    case "min":
       return min(valueExtractor)
-    case `max`:
+    case "max":
       return max(valueExtractor)
     default:
       throw new Error(`Unsupported aggregate function: ${aggExpr.name}`)
@@ -161,16 +226,16 @@ export function evaluateAggregateInGroup(
   const values = groupRows.map((row) => evaluateExpression(agg.args[0]!, row))
 
   switch (agg.name) {
-    case `count`:
+    case "count":
       return values.length
 
-    case `sum`:
+    case "sum":
       return values.reduce((sum, val) => {
         const num = Number(val)
         return isNaN(num) ? sum : sum + num
       }, 0)
 
-    case `avg`:
+    case "avg":
       const numericValues = values
         .map((v) => Number(v))
         .filter((v) => !isNaN(v))
@@ -179,13 +244,13 @@ export function evaluateAggregateInGroup(
             numericValues.length
         : null
 
-    case `min`:
+    case "min":
       const minValues = values.filter((v) => v != null)
       return minValues.length > 0
         ? Math.min(...minValues.map((v) => Number(v)))
         : null
 
-    case `max`:
+    case "max":
       const maxValues = values.filter((v) => v != null)
       return maxValues.length > 0
         ? Math.max(...maxValues.map((v) => Number(v)))

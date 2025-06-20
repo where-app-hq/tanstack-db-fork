@@ -229,13 +229,16 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
     const result = callback(refProxy)
 
-    const groupBy = Array.isArray(result)
+    const newExpressions = Array.isArray(result)
       ? result.map((r) => toExpression(r))
       : [toExpression(result)]
 
+    // Extend existing groupBy expressions instead of replacing them
+    const existingGroupBy = this.query.groupBy || []
+
     return new BaseQueryBuilder({
       ...this.query,
-      groupBy,
+      groupBy: [...existingGroupBy, ...newExpressions],
     }) as any
   }
 
