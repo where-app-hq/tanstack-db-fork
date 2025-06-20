@@ -19,11 +19,6 @@ import {
   concat,
   coalesce,
   add,
-  count,
-  avg,
-  sum,
-  min,
-  max,
 } from "../../../src/query2/query-builder/functions.js"
 
 // Sample data types for comprehensive testing
@@ -726,7 +721,7 @@ describe("Query WHERE Execution", () => {
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) =>
-              eq(concat([emp.first_name, " ", emp.last_name]), "Alice Johnson")
+              eq(concat(emp.first_name, " ", emp.last_name), "Alice Johnson")
             )
             .select(({ emp }) => ({ id: emp.id, name: emp.name })),
       })
@@ -741,7 +736,7 @@ describe("Query WHERE Execution", () => {
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) =>
-              like(coalesce([emp.email, "no-email@company.com"]), "%no-email%")
+              like(coalesce(emp.email, "no-email@company.com"), "%no-email%")
             )
             .select(({ emp }) => ({ id: emp.id, name: emp.name, email: emp.email })),
       })
@@ -1060,8 +1055,8 @@ describe("Query WHERE Execution", () => {
             })),
       })
 
-      // Should match: Alice (active, dept 1, 75k), Eve (active, dept 2, age 25), Charlie (inactive, age 35 - but not > 35)
-      expect(deeplyNested.size).toBe(2) // Alice, Eve (Charlie is exactly 35, not > 35)
+      // Should match: Alice (active, dept 1, 75k), Eve (active, dept 2, age 25), Frank (inactive, age 40 > 35)
+      expect(deeplyNested.size).toBe(3) // Alice, Eve, Frank
     })
   })
 })

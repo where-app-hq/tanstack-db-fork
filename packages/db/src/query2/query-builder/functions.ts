@@ -205,12 +205,12 @@ export function length(arg: RefProxy<string> | string | Expression<string>): Exp
   return new Func(`length`, [toExpression(arg)])
 }
 
-export function concat(array: ExpressionLike): Expression<string> {
-  return new Func(`concat`, [toExpression(array)])
+export function concat(...args: ExpressionLike[]): Expression<string> {
+  return new Func(`concat`, args.map(arg => toExpression(arg)))
 }
 
-export function coalesce(array: ExpressionLike): Expression<any> {
-  return new Func(`coalesce`, [toExpression(array)])
+export function coalesce(...args: ExpressionLike[]): Expression<any> {
+  return new Func(`coalesce`, args.map(arg => toExpression(arg)))
 }
 
 export function add<T extends RefProxy<number> | number>(

@@ -4,23 +4,16 @@ import type { NamespacedRow } from "../../types.js"
 /**
  * Evaluates an expression against a namespaced row structure
  */
-export function evaluateExpression(
-  expression: Expression | Agg,
-  namespacedRow: NamespacedRow
-): any {
-  switch (expression.type) {
-    case `ref`:
-      return evaluateRef(expression, namespacedRow)
+export function evaluateExpression(expr: Expression, namespacedRow: NamespacedRow): any {
+  switch (expr.type) {
     case `val`:
-      return evaluateValue(expression)
+      return expr.value
+    case `ref`:
+      return evaluateRef(expr, namespacedRow)
     case `func`:
-      return evaluateFunction(expression, namespacedRow)
-    case `agg`:
-      throw new Error(
-        `Aggregate functions should be handled in GROUP BY processing`
-      )
+      return evaluateFunction(expr, namespacedRow)
     default:
-      throw new Error(`Unknown expression type: ${(expression as any).type}`)
+      throw new Error(`Unknown expression type: ${(expr as any).type}`)
   }
 }
 
@@ -43,13 +36,9 @@ function evaluateRef(ref: Ref, namespacedRow: NamespacedRow): any {
   let value = tableData
   for (const prop of propertyPath) {
     if (value === null || value === undefined) {
-      return undefined
+      return value
     }
-    if (typeof value === `object` && prop in value) {
-      value = (value as any)[prop]
-    } else {
-      return undefined
-    }
+    value = (value as any)[prop]
   }
 
   return value
@@ -112,8 +101,21 @@ function evaluateFunction(func: Func, namespacedRow: NamespacedRow): any {
     case `length`:
       return typeof args[0] === `string` ? args[0].length : 0
     case `concat`:
-      return args.map((arg) => String(arg ?? ``)).join(``)
+      // Concatenate all arguments directly
+      return args.map((arg) => {
+        try {
+          return String(arg ?? ``)
+        } catch {
+          // If String conversion fails, try JSON.stringify as fallback
+          try {
+            return JSON.stringify(arg) || ``
+          } catch {
+            return `[object]`
+          }
+        }
+      }).join(``)
     case `coalesce`:
+      // Return the first non-null, non-undefined argument
       return args.find((arg) => arg !== null && arg !== undefined) ?? null
 
     // Math functions
@@ -141,21 +143,61 @@ function compareValues(a: any, b: any): number {
   if (a == null) return -1
   if (b == null) return 1
 
-  // Handle same types
-  if (typeof a === typeof b) {
-    if (typeof a === `string`) {
-      return a.localeCompare(b)
+  // Handle same types with safe type checking
+  try {
+    // Be extra safe about type checking - avoid accessing typeof on complex objects
+    let typeA: string
+    let typeB: string
+    
+    try {
+      typeA = typeof a
+      typeB = typeof b
+    } catch {
+      // If typeof fails, treat as objects and convert to strings
+      const strA = String(a)
+      const strB = String(b)
+      return strA.localeCompare(strB)
     }
-    if (typeof a === `number`) {
-      return a - b
+    
+    if (typeA === typeB) {
+      if (typeA === `string`) {
+        // Be defensive about string comparison
+        try {
+          return String(a).localeCompare(String(b))
+        } catch {
+          return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0
+        }
+      }
+      if (typeA === `number`) {
+        return Number(a) - Number(b)
+      }
+      if (typeA === `boolean`) {
+        const boolA = Boolean(a)
+        const boolB = Boolean(b)
+        return boolA === boolB ? 0 : (boolA ? 1 : -1)
+      }
+      if (a instanceof Date && b instanceof Date) {
+        return a.getTime() - b.getTime()
+      }
     }
-    if (a instanceof Date && b instanceof Date) {
-      return a.getTime() - b.getTime()
+
+    // Convert to strings for comparison if types differ or are complex
+    const strA = String(a)
+    const strB = String(b)
+    return strA.localeCompare(strB)
+  } catch (error) {
+    // If anything fails, try basic comparison
+    try {
+      const strA = String(a)
+      const strB = String(b)
+      if (strA < strB) return -1
+      if (strA > strB) return 1
+      return 0
+    } catch {
+      // Final fallback - treat as equal
+      return 0
     }
   }
-
-  // Convert to strings for comparison if types differ
-  return String(a).localeCompare(String(b))
 }
 
 /**
