@@ -68,7 +68,7 @@ export function processGroupBy(
   const mapping = validateAndCreateMapping(groupByClause, selectClause)
 
   // Create a key extractor function using simple __key_X format
-  const keyExtractor = ([_oldKey, namespacedRow]: [string, NamespacedRow]) => {
+  const keyExtractor = ([, namespacedRow]: [string, NamespacedRow]) => {
     const key: Record<string, unknown> = {}
 
     // Use simple __key_X format for each groupBy expression
@@ -100,7 +100,7 @@ export function processGroupBy(
   // Process the SELECT clause to handle non-aggregate expressions
   if (selectClause) {
     pipeline = pipeline.pipe(
-      map(([key, aggregatedRow]) => {
+      map(([, aggregatedRow]) => {
         const result: Record<string, any> = {}
 
         // For non-aggregate expressions in SELECT, use cached mapping
@@ -139,7 +139,7 @@ export function processGroupBy(
   // Apply HAVING clause if present
   if (havingClause) {
     pipeline = pipeline.pipe(
-      filter(([_key, aggregatedRow]) => {
+      filter(([, aggregatedRow]) => {
         // Transform the HAVING clause to replace Agg expressions with direct references
         const transformedHavingClause = transformHavingClause(
           havingClause,
@@ -197,10 +197,7 @@ function expressionsEqual(expr1: any, expr2: any): boolean {
  */
 function getAggregateFunction(aggExpr: Agg) {
   // Create a value extractor function for the expression to aggregate
-  const valueExtractor = ([_oldKey, namespacedRow]: [
-    string,
-    NamespacedRow,
-  ]) => {
+  const valueExtractor = ([, namespacedRow]: [string, NamespacedRow]) => {
     const value = evaluateExpression(aggExpr.args[0]!, namespacedRow)
     // Ensure we return a number for numeric aggregate functions
     return typeof value === `number` ? value : value != null ? Number(value) : 0
@@ -231,7 +228,7 @@ function transformHavingClause(
   selectClause: Select
 ): Expression {
   switch (havingExpr.type) {
-    case `agg`:
+    case `agg`: {
       const aggExpr = havingExpr
       // Find matching aggregate in SELECT clause
       for (const [alias, selectExpr] of Object.entries(selectClause)) {
@@ -244,14 +241,16 @@ function transformHavingClause(
       throw new Error(
         `Aggregate function in HAVING clause must also be in SELECT clause: ${aggExpr.name}`
       )
+    }
 
-    case `func`:
+    case `func`: {
       const funcExpr = havingExpr
       // Transform function arguments recursively
       const transformedArgs = funcExpr.args.map((arg: Expression | Agg) =>
         transformHavingClause(arg, selectClause)
       )
       return new Func(funcExpr.name, transformedArgs)
+    }
 
     case `ref`:
     case `val`:
@@ -287,32 +286,38 @@ export function evaluateAggregateInGroup(
     case `count`:
       return values.length
 
-    case `sum`:
-      return values.reduce((sum, val) => {
+    case `sum`: {
+      return values.reduce((accumulatedSum, val) => {
         const num = Number(val)
-        return isNaN(num) ? sum : sum + num
+        return isNaN(num) ? accumulatedSum : accumulatedSum + num
       }, 0)
+    }
 
-    case `avg`:
+    case `avg`: {
       const numericValues = values
         .map((v) => Number(v))
         .filter((v) => !isNaN(v))
       return numericValues.length > 0
-        ? numericValues.reduce((sum, val) => sum + val, 0) /
-            numericValues.length
+        ? numericValues.reduce(
+            (accumulatedSum, val) => accumulatedSum + val,
+            0
+          ) / numericValues.length
         : null
+    }
 
-    case `min`:
+    case `min`: {
       const minValues = values.filter((v) => v != null)
       return minValues.length > 0
         ? Math.min(...minValues.map((v) => Number(v)))
         : null
+    }
 
-    case `max`:
+    case `max`: {
       const maxValues = values.filter((v) => v != null)
       return maxValues.length > 0
         ? Math.max(...maxValues.map((v) => Number(v)))
         : null
+    }
 
     default:
       throw new Error(`Unknown aggregate function: ${agg.name}`)

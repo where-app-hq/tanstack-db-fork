@@ -1,4 +1,4 @@
-import type { Agg, Expression, Func, Ref, Value } from "../ir.js"
+import type { Expression, Func, Ref } from "../ir.js"
 import type { NamespacedRow } from "../../types.js"
 
 /**
@@ -36,22 +36,15 @@ function evaluateRef(ref: Ref, namespacedRow: NamespacedRow): any {
   }
 
   // Navigate through the property path
-  let value = tableData
+  let value: any = tableData
   for (const prop of propertyPath) {
-    if (value === null || value === undefined) {
+    if (value == null) {
       return value
     }
-    value = (value as any)[prop]
+    value = value[prop]
   }
 
   return value
-}
-
-/**
- * Evaluates a value expression (literal)
- */
-function evaluateValue(value: Value): any {
-  return value.value
 }
 
 /**
@@ -82,13 +75,14 @@ function evaluateFunction(func: Func, namespacedRow: NamespacedRow): any {
       return !args[0]
 
     // Array operators
-    case `in`:
+    case `in`: {
       const value = args[0]
       const array = args[1]
       if (!Array.isArray(array)) {
         return false
       }
       return array.includes(value)
+    }
 
     // String operators
     case `like`:
@@ -130,9 +124,10 @@ function evaluateFunction(func: Func, namespacedRow: NamespacedRow): any {
       return (args[0] ?? 0) - (args[1] ?? 0)
     case `multiply`:
       return (args[0] ?? 0) * (args[1] ?? 0)
-    case `divide`:
+    case `divide`: {
       const divisor = args[1] ?? 0
       return divisor !== 0 ? (args[0] ?? 0) / divisor : null
+    }
 
     default:
       throw new Error(`Unknown function: ${func.name}`)
@@ -190,7 +185,7 @@ function compareValues(a: any, b: any): number {
     const strA = String(a)
     const strB = String(b)
     return strA.localeCompare(strB)
-  } catch (error) {
+  } catch {
     // If anything fails, try basic comparison
     try {
       const strA = String(a)

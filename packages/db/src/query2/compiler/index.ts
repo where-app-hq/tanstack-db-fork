@@ -76,10 +76,7 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
       query.select
     )
 
-    // Process the HAVING clause if it exists (only applies after GROUP BY)
-    if (query.having && (!query.groupBy || query.groupBy.length === 0)) {
-      throw new Error(`HAVING clause requires GROUP BY clause`)
-    }
+    // HAVING clause is handled within processGroupBy
 
     // Process orderBy parameter if it exists
     if (query.orderBy && query.orderBy.length > 0) {
@@ -133,21 +130,22 @@ function processFrom(
   from: CollectionRef | QueryRef,
   allInputs: Record<string, KeyedStream>
 ): { alias: string; input: KeyedStream } {
-  if (from.type === `collectionRef`) {
-    const collectionRef = from
-    const input = allInputs[collectionRef.collection.id]
-    if (!input) {
-      throw new Error(
-        `Input for collection "${collectionRef.collection.id}" not found in inputs map`
-      )
+  switch (from.type) {
+    case `collectionRef`: {
+      const input = allInputs[from.collection.id]
+      if (!input) {
+        throw new Error(
+          `Input for collection "${from.collection.id}" not found in inputs map`
+        )
+      }
+      return { alias: from.alias, input }
     }
-    return { alias: collectionRef.alias, input }
-  } else if (from.type === `queryRef`) {
-    const queryRef = from
-    // Recursively compile the sub-query
-    const subQueryInput = compileQuery(queryRef.query, allInputs)
-    return { alias: queryRef.alias, input: subQueryInput as KeyedStream }
-  } else {
-    throw new Error(`Unsupported FROM type: ${(from as any).type}`)
+    case `queryRef`: {
+      // Recursively compile the sub-query
+      const subQueryInput = compileQuery(from.query, allInputs)
+      return { alias: from.alias, input: subQueryInput as KeyedStream }
+    }
+    default:
+      throw new Error(`Unsupported FROM type: ${(from as any).type}`)
   }
 }

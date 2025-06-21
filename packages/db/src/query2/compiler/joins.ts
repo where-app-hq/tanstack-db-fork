@@ -135,22 +135,23 @@ function processJoinSource(
   from: CollectionRef | QueryRef,
   allInputs: Record<string, KeyedStream>
 ): { alias: string; input: KeyedStream } {
-  if (from.type === `collectionRef`) {
-    const collectionRef = from
-    const input = allInputs[collectionRef.collection.id]
-    if (!input) {
-      throw new Error(
-        `Input for collection "${collectionRef.collection.id}" not found in inputs map`
-      )
+  switch (from.type) {
+    case `collectionRef`: {
+      const input = allInputs[from.collection.id]
+      if (!input) {
+        throw new Error(
+          `Input for collection "${from.collection.id}" not found in inputs map`
+        )
+      }
+      return { alias: from.alias, input }
     }
-    return { alias: collectionRef.alias, input }
-  } else if (from.type === `queryRef`) {
-    const queryRef = from
-    // Recursively compile the sub-query
-    const subQueryInput = compileQuery(queryRef.query, allInputs)
-    return { alias: queryRef.alias, input: subQueryInput as KeyedStream }
-  } else {
-    throw new Error(`Unsupported join source type: ${(from as any).type}`)
+    case `queryRef`: {
+      // Recursively compile the sub-query
+      const subQueryInput = compileQuery(from.query, allInputs)
+      return { alias: from.alias, input: subQueryInput as KeyedStream }
+    }
+    default:
+      throw new Error(`Unsupported join source type: ${(from as any).type}`)
   }
 }
 

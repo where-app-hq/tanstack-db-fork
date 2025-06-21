@@ -13,7 +13,7 @@ import type {
 export function processSelect(
   pipeline: NamespacedAndKeyedStream,
   selectClause: Select,
-  allInputs: Record<string, KeyedStream>
+  _allInputs: Record<string, KeyedStream>
 ): KeyedStream {
   return pipeline.pipe(
     map(([key, namespacedRow]) => {

@@ -34,6 +34,7 @@ const sampleUsers: Array<User> = [
   { id: 4, name: `Dave`, age: 22, email: `dave@example.com`, active: true },
 ]
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const sampleDepartments: Array<Department> = [
   { id: 1, name: `Engineering`, budget: 100000 },
   { id: 2, name: `Marketing`, budget: 50000 },

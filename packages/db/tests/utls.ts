@@ -66,15 +66,15 @@ export function mockSyncCollectionOptions<
         commit()
       },
     },
-    onInsert: async (params: MutationFnParams<T>) => {
+    onInsert: async (_params: MutationFnParams<T>) => {
       // TODO
       await awaitSync()
     },
-    onUpdate: async (params: MutationFnParams<T>) => {
+    onUpdate: async (_params: MutationFnParams<T>) => {
       // TODO
       await awaitSync()
     },
-    onDelete: async (params: MutationFnParams<T>) => {
+    onDelete: async (_params: MutationFnParams<T>) => {
       // TODO
       await awaitSync()
     },
