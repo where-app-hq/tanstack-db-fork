@@ -44,7 +44,7 @@ describe(`Query`, () => {
       usersCollection = createUsersCollection()
     })
 
-    test(`should create, update and delete a live query collection with config`, async () => {
+    test(`should create, update and delete a live query collection with config`, () => {
       const liveCollection = createLiveQueryCollection({
         query: (q) =>
           q.from({ user: usersCollection }).select(({ user }) => ({
@@ -105,7 +105,7 @@ describe(`Query`, () => {
       expect(liveCollection.get(5)).toBeUndefined()
     })
 
-    test(`should create, update and delete a live query collection with query function`, async () => {
+    test(`should create, update and delete a live query collection with query function`, () => {
       const liveCollection = createLiveQueryCollection((q) =>
         q.from({ user: usersCollection }).select(({ user }) => ({
           id: user.id,
@@ -165,7 +165,7 @@ describe(`Query`, () => {
       expect(liveCollection.get(5)).toBeUndefined()
     })
 
-    test(`should create, update and delete a live query collection with WHERE clause`, async () => {
+    test(`should create, update and delete a live query collection with WHERE clause`, () => {
       const activeLiveCollection = createLiveQueryCollection({
         query: (q) =>
           q
@@ -252,7 +252,7 @@ describe(`Query`, () => {
       expect(activeLiveCollection.get(5)).toBeUndefined()
     })
 
-    test(`should create a live query collection with SELECT projection`, async () => {
+    test(`should create a live query collection with SELECT projection`, () => {
       const projectedLiveCollection = createLiveQueryCollection({
         query: (q) =>
           q
@@ -344,7 +344,7 @@ describe(`Query`, () => {
       expect(projectedLiveCollection.get(5)).toBeUndefined()
     })
 
-    test(`should use custom getKey when provided`, async () => {
+    test(`should use custom getKey when provided`, () => {
       const customKeyCollection = createLiveQueryCollection({
         id: `custom-key-users`,
         query: (q) =>
@@ -417,7 +417,7 @@ describe(`Query`, () => {
       expect(customKeyCollection.get(5)).toBeUndefined()
     })
 
-    test(`should auto-generate unique IDs when not provided`, async () => {
+    test(`should auto-generate unique IDs when not provided`, () => {
       const collection1 = createLiveQueryCollection({
         query: (q) =>
           q.from({ user: usersCollection }).select(({ user }) => ({

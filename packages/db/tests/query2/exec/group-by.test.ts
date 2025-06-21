@@ -128,7 +128,7 @@ describe(`Query GROUP BY Execution`, () => {
       ordersCollection = createOrdersCollection()
     })
 
-    test(`group by customer_id with aggregates`, async () => {
+    test(`group by customer_id with aggregates`, () => {
       const customerSummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -179,7 +179,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(customer3?.max_amount).toBe(250)
     })
 
-    test(`group by status`, async () => {
+    test(`group by status`, () => {
       const statusSummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -217,7 +217,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(cancelled?.avg_amount).toBe(75)
     })
 
-    test(`group by product_category`, async () => {
+    test(`group by product_category`, () => {
       const categorySummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -256,7 +256,7 @@ describe(`Query GROUP BY Execution`, () => {
       ordersCollection = createOrdersCollection()
     })
 
-    test(`group by customer_id and status`, async () => {
+    test(`group by customer_id and status`, () => {
       const customerStatusSummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -308,7 +308,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(customer3Cancelled?.order_count).toBe(1)
     })
 
-    test(`group by status and product_category`, async () => {
+    test(`group by status and product_category`, () => {
       const statusCategorySummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -344,7 +344,7 @@ describe(`Query GROUP BY Execution`, () => {
       ordersCollection = createOrdersCollection()
     })
 
-    test(`group by after filtering with WHERE`, async () => {
+    test(`group by after filtering with WHERE`, () => {
       const completedOrdersSummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -373,7 +373,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(customer2?.order_count).toBe(1)
     })
 
-    test(`group by with complex WHERE conditions`, async () => {
+    test(`group by with complex WHERE conditions`, () => {
       const highValueOrdersSummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -413,7 +413,7 @@ describe(`Query GROUP BY Execution`, () => {
       ordersCollection = createOrdersCollection()
     })
 
-    test(`having with count filter`, async () => {
+    test(`having with count filter`, () => {
       const highVolumeCustomers = createLiveQueryCollection({
         query: (q) =>
           q
@@ -436,7 +436,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(customer1?.total_amount).toBe(700)
     })
 
-    test(`having with sum filter`, async () => {
+    test(`having with sum filter`, () => {
       const highValueCustomers = createLiveQueryCollection({
         query: (q) =>
           q
@@ -464,7 +464,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(customer2?.total_amount).toBe(450)
     })
 
-    test(`having with avg filter`, async () => {
+    test(`having with avg filter`, () => {
       const consistentCustomers = createLiveQueryCollection({
         query: (q) =>
           q
@@ -490,7 +490,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(customer2?.avg_amount).toBe(225)
     })
 
-    test(`having with multiple conditions using AND`, async () => {
+    test(`having with multiple conditions using AND`, () => {
       const premiumCustomers = createLiveQueryCollection({
         query: (q) =>
           q
@@ -517,7 +517,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(premiumCustomers.get(2)).toBeDefined()
     })
 
-    test(`having with multiple conditions using OR`, async () => {
+    test(`having with multiple conditions using OR`, () => {
       const interestingCustomers = createLiveQueryCollection({
         query: (q) =>
           q
@@ -544,7 +544,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(interestingCustomers.get(3)).toBeDefined()
     })
 
-    test(`having combined with WHERE clause`, async () => {
+    test(`having combined with WHERE clause`, () => {
       const filteredHighValueCustomers = createLiveQueryCollection({
         query: (q) =>
           q
@@ -570,7 +570,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(customer1?.order_count).toBe(3)
     })
 
-    test(`having with min and max filters`, async () => {
+    test(`having with min and max filters`, () => {
       const diverseSpendingCustomers = createLiveQueryCollection({
         query: (q) =>
           q
@@ -598,7 +598,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(diverseSpendingCustomers.get(2)).toBeDefined()
     })
 
-    test(`having with product category grouping`, async () => {
+    test(`having with product category grouping`, () => {
       const popularCategories = createLiveQueryCollection({
         query: (q) =>
           q
@@ -622,7 +622,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(electronics?.order_count).toBe(4)
     })
 
-    test(`having with no results`, async () => {
+    test(`having with no results`, () => {
       const impossibleFilter = createLiveQueryCollection({
         query: (q) =>
           q
@@ -648,7 +648,7 @@ describe(`Query GROUP BY Execution`, () => {
       ordersCollection = createOrdersCollection()
     })
 
-    test(`live updates when inserting new orders`, async () => {
+    test(`live updates when inserting new orders`, () => {
       const customerSummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -713,7 +713,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(newCustomer4?.order_count).toBe(1)
     })
 
-    test(`live updates when updating existing orders`, async () => {
+    test(`live updates when updating existing orders`, () => {
       const statusSummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -753,7 +753,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(updatedCompleted?.total_amount).toBe(1150) // 1000 + 150
     })
 
-    test(`live updates when deleting orders`, async () => {
+    test(`live updates when deleting orders`, () => {
       const customerSummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -802,7 +802,7 @@ describe(`Query GROUP BY Execution`, () => {
       ordersCollection = createOrdersCollection()
     })
 
-    test(`group by with null values`, async () => {
+    test(`group by with null values`, () => {
       const salesRepSummary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -836,7 +836,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(noSalesRep?.order_count).toBe(1)
     })
 
-    test(`empty collection handling`, async () => {
+    test(`empty collection handling`, () => {
       const emptyCollection = createCollection(
         mockSyncCollectionOptions<Order>({
           id: `empty-orders`,
@@ -882,7 +882,7 @@ describe(`Query GROUP BY Execution`, () => {
       expect(customer1?.order_count).toBe(1)
     })
 
-    test(`group by with all aggregate functions`, async () => {
+    test(`group by with all aggregate functions`, () => {
       const comprehensiveStats = createLiveQueryCollection({
         query: (q) =>
           q

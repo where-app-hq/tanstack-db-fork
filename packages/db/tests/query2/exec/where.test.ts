@@ -129,7 +129,7 @@ describe(`Query WHERE Execution`, () => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test(`eq operator - equality comparison`, async () => {
+    test(`eq operator - equality comparison`, () => {
       const activeEmployees = createLiveQueryCollection({
         query: (q) =>
           q
@@ -188,7 +188,7 @@ describe(`Query WHERE Execution`, () => {
       expect(activeEmployees.get(7)).toBeUndefined()
     })
 
-    test(`gt operator - greater than comparison`, async () => {
+    test(`gt operator - greater than comparison`, () => {
       const highEarners = createLiveQueryCollection({
         query: (q) =>
           q
@@ -244,7 +244,7 @@ describe(`Query WHERE Execution`, () => {
       expect(seniors.size).toBe(3) // Should not include Henry (age <= 30)
     })
 
-    test(`gte operator - greater than or equal comparison`, async () => {
+    test(`gte operator - greater than or equal comparison`, () => {
       const wellPaid = createLiveQueryCollection({
         query: (q) =>
           q
@@ -272,7 +272,7 @@ describe(`Query WHERE Execution`, () => {
       expect(exactMatch.toArray.some((emp) => emp.salary === 65000)).toBe(true) // Bob
     })
 
-    test(`lt operator - less than comparison`, async () => {
+    test(`lt operator - less than comparison`, () => {
       const juniorSalary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -304,7 +304,7 @@ describe(`Query WHERE Execution`, () => {
       expect(youngEmployees.size).toBe(3) // Alice (28), Diana (29), Eve (25)
     })
 
-    test(`lte operator - less than or equal comparison`, async () => {
+    test(`lte operator - less than or equal comparison`, () => {
       const modestSalary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -336,7 +336,7 @@ describe(`Query WHERE Execution`, () => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test(`and operator - logical AND`, async () => {
+    test(`and operator - logical AND`, () => {
       const activeHighEarners = createLiveQueryCollection({
         query: (q) =>
           q
@@ -382,7 +382,7 @@ describe(`Query WHERE Execution`, () => {
       expect(specificGroup.size).toBe(3) // Alice, Bob, Eve
     })
 
-    test(`or operator - logical OR`, async () => {
+    test(`or operator - logical OR`, () => {
       const seniorOrHighPaid = createLiveQueryCollection({
         query: (q) =>
           q
@@ -416,7 +416,7 @@ describe(`Query WHERE Execution`, () => {
       expect(specificDepartments.size).toBe(3) // Alice, Charlie (dept 1), Diana (dept 3)
     })
 
-    test(`not operator - logical NOT`, async () => {
+    test(`not operator - logical NOT`, () => {
       const inactiveEmployees = createLiveQueryCollection({
         query: (q) =>
           q
@@ -451,7 +451,7 @@ describe(`Query WHERE Execution`, () => {
       )
     })
 
-    test(`complex nested boolean conditions`, async () => {
+    test(`complex nested boolean conditions`, () => {
       const complexQuery = createLiveQueryCollection({
         query: (q) =>
           q
@@ -485,7 +485,7 @@ describe(`Query WHERE Execution`, () => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test(`like operator - pattern matching`, async () => {
+    test(`like operator - pattern matching`, () => {
       const johnsonFamily = createLiveQueryCollection({
         query: (q) =>
           q
@@ -539,7 +539,7 @@ describe(`Query WHERE Execution`, () => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test(`isIn operator - membership testing`, async () => {
+    test(`isIn operator - membership testing`, () => {
       const specificDepartments = createLiveQueryCollection({
         query: (q) =>
           q
@@ -594,7 +594,7 @@ describe(`Query WHERE Execution`, () => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test(`null equality comparison`, async () => {
+    test(`null equality comparison`, () => {
       const nullEmails = createLiveQueryCollection({
         query: (q) =>
           q
@@ -626,7 +626,7 @@ describe(`Query WHERE Execution`, () => {
       expect(nullDepartments.get(6)?.department_id).toBeNull()
     })
 
-    test(`not null comparison`, async () => {
+    test(`not null comparison`, () => {
       const hasEmail = createLiveQueryCollection({
         query: (q) =>
           q
@@ -665,7 +665,7 @@ describe(`Query WHERE Execution`, () => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test(`upper function in WHERE clause`, async () => {
+    test(`upper function in WHERE clause`, () => {
       const upperNameMatch = createLiveQueryCollection({
         query: (q) =>
           q
@@ -678,7 +678,7 @@ describe(`Query WHERE Execution`, () => {
       expect(upperNameMatch.get(1)?.name).toBe(`Alice Johnson`)
     })
 
-    test(`lower function in WHERE clause`, async () => {
+    test(`lower function in WHERE clause`, () => {
       const lowerNameMatch = createLiveQueryCollection({
         query: (q) =>
           q
@@ -691,7 +691,7 @@ describe(`Query WHERE Execution`, () => {
       expect(lowerNameMatch.get(2)?.name).toBe(`Bob Smith`)
     })
 
-    test(`length function in WHERE clause`, async () => {
+    test(`length function in WHERE clause`, () => {
       const shortNames = createLiveQueryCollection({
         query: (q) =>
           q
@@ -724,7 +724,7 @@ describe(`Query WHERE Execution`, () => {
       expect(longNames.size).toBe(1) // Alice Johnson (7 chars)
     })
 
-    test(`concat function in WHERE clause`, async () => {
+    test(`concat function in WHERE clause`, () => {
       const fullNameMatch = createLiveQueryCollection({
         query: (q) =>
           q
@@ -739,7 +739,7 @@ describe(`Query WHERE Execution`, () => {
       expect(fullNameMatch.get(1)?.name).toBe(`Alice Johnson`)
     })
 
-    test(`coalesce function in WHERE clause`, async () => {
+    test(`coalesce function in WHERE clause`, () => {
       const emailOrDefault = createLiveQueryCollection({
         query: (q) =>
           q
@@ -766,7 +766,7 @@ describe(`Query WHERE Execution`, () => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test(`add function in WHERE clause`, async () => {
+    test(`add function in WHERE clause`, () => {
       const salaryPlusBonus = createLiveQueryCollection({
         query: (q) =>
           q
@@ -809,7 +809,7 @@ describe(`Query WHERE Execution`, () => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test(`live updates with complex WHERE conditions`, async () => {
+    test(`live updates with complex WHERE conditions`, () => {
       const complexQuery = createLiveQueryCollection({
         query: (q) =>
           q
@@ -883,7 +883,7 @@ describe(`Query WHERE Execution`, () => {
       expect(complexQuery.get(10)).toBeUndefined()
     })
 
-    test(`live updates with string function WHERE conditions`, async () => {
+    test(`live updates with string function WHERE conditions`, () => {
       const nameStartsWithA = createLiveQueryCollection({
         query: (q) =>
           q
@@ -936,7 +936,7 @@ describe(`Query WHERE Execution`, () => {
       expect(nameStartsWithA.get(11)).toBeUndefined()
     })
 
-    test(`live updates with null handling`, async () => {
+    test(`live updates with null handling`, () => {
       const hasNullEmail = createLiveQueryCollection({
         query: (q) =>
           q
@@ -996,7 +996,7 @@ describe(`Query WHERE Execution`, () => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test(`empty collection handling`, async () => {
+    test(`empty collection handling`, () => {
       const emptyCollection = createCollection(
         mockSyncCollectionOptions<Employee>({
           id: `empty-employees`,
@@ -1036,7 +1036,7 @@ describe(`Query WHERE Execution`, () => {
       expect(emptyQuery.size).toBe(1)
     })
 
-    test(`multiple WHERE conditions with same field`, async () => {
+    test(`multiple WHERE conditions with same field`, () => {
       const salaryRange = createLiveQueryCollection({
         query: (q) =>
           q
@@ -1059,7 +1059,7 @@ describe(`Query WHERE Execution`, () => {
       ).toBe(true)
     })
 
-    test(`deeply nested conditions`, async () => {
+    test(`deeply nested conditions`, () => {
       const deeplyNested = createLiveQueryCollection({
         query: (q) =>
           q
