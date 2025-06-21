@@ -1,6 +1,7 @@
 import { filter, groupBy, groupByOperators, map } from "@electric-sql/d2mini"
+import { Func, Ref } from "../ir.js"
 import { evaluateExpression } from "./evaluators.js"
-import type { Agg, GroupBy, Having, Select } from "../ir.js"
+import type { Agg, Expression, GroupBy, Having, Select } from "../ir.js"
 import type { NamespacedAndKeyedStream, NamespacedRow } from "../../types.js"
 
 const { sum, count, avg, min, max } = groupByOperators
@@ -30,7 +31,7 @@ function validateAndCreateMapping(
 
   // Validate each SELECT expression
   for (const [alias, expr] of Object.entries(selectClause)) {
-    if (expr.type === "agg") {
+    if (expr.type === `agg`) {
       // Aggregate expressions are allowed and don't need to be in GROUP BY
       continue
     }
@@ -86,7 +87,7 @@ export function processGroupBy(
   if (selectClause) {
     // Scan the SELECT clause for aggregate functions
     for (const [alias, expr] of Object.entries(selectClause)) {
-      if (expr.type === "agg") {
+      if (expr.type === `agg`) {
         const aggExpr = expr
         aggregates[alias] = getAggregateFunction(aggExpr)
       }
@@ -104,7 +105,7 @@ export function processGroupBy(
 
         // For non-aggregate expressions in SELECT, use cached mapping
         for (const [alias, expr] of Object.entries(selectClause)) {
-          if (expr.type !== "agg") {
+          if (expr.type !== `agg`) {
             // Use cached mapping to get the corresponding __key_X
             const groupIndex = mapping.selectToGroupByIndex.get(alias)
             if (groupIndex !== undefined) {
@@ -123,7 +124,7 @@ export function processGroupBy(
         if (groupByClause.length === 1) {
           finalKey = aggregatedRow[`__key_0`]
         } else {
-          const keyParts: unknown[] = []
+          const keyParts: Array<unknown> = []
           for (let i = 0; i < groupByClause.length; i++) {
             keyParts.push(aggregatedRow[`__key_${i}`])
           }
@@ -138,8 +139,14 @@ export function processGroupBy(
   // Apply HAVING clause if present
   if (havingClause) {
     pipeline = pipeline.pipe(
-      filter(([_key, namespacedRow]) => {
-        return evaluateExpression(havingClause, namespacedRow)
+      filter(([_key, aggregatedRow]) => {
+        // Transform the HAVING clause to replace Agg expressions with direct references
+        const transformedHavingClause = transformHavingClause(
+          havingClause,
+          selectClause || {}
+        )
+        const namespacedRow = { result: aggregatedRow }
+        return evaluateExpression(transformedHavingClause, namespacedRow)
       })
     )
   }
@@ -155,16 +162,16 @@ function expressionsEqual(expr1: any, expr2: any): boolean {
   if (expr1.type !== expr2.type) return false
 
   switch (expr1.type) {
-    case "ref":
+    case `ref`:
       // Compare paths as arrays
       if (!expr1.path || !expr2.path) return false
       if (expr1.path.length !== expr2.path.length) return false
       return expr1.path.every(
         (segment: string, i: number) => segment === expr2.path[i]
       )
-    case "val":
+    case `val`:
       return expr1.value === expr2.value
-    case "func":
+    case `func`:
       return (
         expr1.name === expr2.name &&
         expr1.args?.length === expr2.args?.length &&
@@ -172,7 +179,7 @@ function expressionsEqual(expr1: any, expr2: any): boolean {
           expressionsEqual(arg, expr2.args[i])
         )
       )
-    case "agg":
+    case `agg`:
       return (
         expr1.name === expr2.name &&
         expr1.args?.length === expr2.args?.length &&
@@ -196,24 +203,75 @@ function getAggregateFunction(aggExpr: Agg) {
   ]) => {
     const value = evaluateExpression(aggExpr.args[0]!, namespacedRow)
     // Ensure we return a number for numeric aggregate functions
-    return typeof value === "number" ? value : value != null ? Number(value) : 0
+    return typeof value === `number` ? value : value != null ? Number(value) : 0
   }
 
   // Return the appropriate aggregate function
   switch (aggExpr.name.toLowerCase()) {
-    case "sum":
+    case `sum`:
       return sum(valueExtractor)
-    case "count":
+    case `count`:
       return count() // count() doesn't need a value extractor
-    case "avg":
+    case `avg`:
       return avg(valueExtractor)
-    case "min":
+    case `min`:
       return min(valueExtractor)
-    case "max":
+    case `max`:
       return max(valueExtractor)
     default:
       throw new Error(`Unsupported aggregate function: ${aggExpr.name}`)
   }
+}
+
+/**
+ * Transforms a HAVING clause to replace Agg expressions with references to computed values
+ */
+function transformHavingClause(
+  havingExpr: Expression | Agg,
+  selectClause: Select
+): Expression {
+  switch (havingExpr.type) {
+    case `agg`:
+      const aggExpr = havingExpr
+      // Find matching aggregate in SELECT clause
+      for (const [alias, selectExpr] of Object.entries(selectClause)) {
+        if (selectExpr.type === `agg` && aggregatesEqual(aggExpr, selectExpr)) {
+          // Replace with a reference to the computed aggregate
+          return new Ref([`result`, alias])
+        }
+      }
+      // If no matching aggregate found in SELECT, throw error
+      throw new Error(
+        `Aggregate function in HAVING clause must also be in SELECT clause: ${aggExpr.name}`
+      )
+
+    case `func`:
+      const funcExpr = havingExpr
+      // Transform function arguments recursively
+      const transformedArgs = funcExpr.args.map((arg: Expression | Agg) =>
+        transformHavingClause(arg, selectClause)
+      )
+      return new Func(funcExpr.name, transformedArgs)
+
+    case `ref`:
+    case `val`:
+      // Return as-is
+      return havingExpr as Expression
+
+    default:
+      throw new Error(
+        `Unknown expression type in HAVING clause: ${(havingExpr as any).type}`
+      )
+  }
+}
+
+/**
+ * Checks if two aggregate expressions are equal
+ */
+function aggregatesEqual(agg1: Agg, agg2: Agg): boolean {
+  if (agg1.name !== agg2.name) return false
+  if (agg1.args.length !== agg2.args.length) return false
+  return agg1.args.every((arg, i) => expressionsEqual(arg, agg2.args[i]))
 }
 
 /**
@@ -226,16 +284,16 @@ export function evaluateAggregateInGroup(
   const values = groupRows.map((row) => evaluateExpression(agg.args[0]!, row))
 
   switch (agg.name) {
-    case "count":
+    case `count`:
       return values.length
 
-    case "sum":
+    case `sum`:
       return values.reduce((sum, val) => {
         const num = Number(val)
         return isNaN(num) ? sum : sum + num
       }, 0)
 
-    case "avg":
+    case `avg`:
       const numericValues = values
         .map((v) => Number(v))
         .filter((v) => !isNaN(v))
@@ -244,13 +302,13 @@ export function evaluateAggregateInGroup(
             numericValues.length
         : null
 
-    case "min":
+    case `min`:
       const minValues = values.filter((v) => v != null)
       return minValues.length > 0
         ? Math.min(...minValues.map((v) => Number(v)))
         : null
 
-    case "max":
+    case `max`:
       const maxValues = values.filter((v) => v != null)
       return maxValues.length > 0
         ? Math.max(...maxValues.map((v) => Number(v)))

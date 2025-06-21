@@ -4,7 +4,10 @@ import type { NamespacedRow } from "../../types.js"
 /**
  * Evaluates an expression against a namespaced row structure
  */
-export function evaluateExpression(expr: Expression, namespacedRow: NamespacedRow): any {
+export function evaluateExpression(
+  expr: Expression,
+  namespacedRow: NamespacedRow
+): any {
   switch (expr.type) {
     case `val`:
       return expr.value
@@ -102,18 +105,20 @@ function evaluateFunction(func: Func, namespacedRow: NamespacedRow): any {
       return typeof args[0] === `string` ? args[0].length : 0
     case `concat`:
       // Concatenate all arguments directly
-      return args.map((arg) => {
-        try {
-          return String(arg ?? ``)
-        } catch {
-          // If String conversion fails, try JSON.stringify as fallback
+      return args
+        .map((arg) => {
           try {
-            return JSON.stringify(arg) || ``
+            return String(arg ?? ``)
           } catch {
-            return `[object]`
+            // If String conversion fails, try JSON.stringify as fallback
+            try {
+              return JSON.stringify(arg) || ``
+            } catch {
+              return `[object]`
+            }
           }
-        }
-      }).join(``)
+        })
+        .join(``)
     case `coalesce`:
       // Return the first non-null, non-undefined argument
       return args.find((arg) => arg !== null && arg !== undefined) ?? null
@@ -148,7 +153,7 @@ function compareValues(a: any, b: any): number {
     // Be extra safe about type checking - avoid accessing typeof on complex objects
     let typeA: string
     let typeB: string
-    
+
     try {
       typeA = typeof a
       typeB = typeof b
@@ -158,7 +163,7 @@ function compareValues(a: any, b: any): number {
       const strB = String(b)
       return strA.localeCompare(strB)
     }
-    
+
     if (typeA === typeB) {
       if (typeA === `string`) {
         // Be defensive about string comparison
@@ -174,7 +179,7 @@ function compareValues(a: any, b: any): number {
       if (typeA === `boolean`) {
         const boolA = Boolean(a)
         const boolB = Boolean(b)
-        return boolA === boolB ? 0 : (boolA ? 1 : -1)
+        return boolA === boolB ? 0 : boolA ? 1 : -1
       }
       if (a instanceof Date && b instanceof Date) {
         return a.getTime() - b.getTime()

@@ -3,22 +3,22 @@ import { createLiveQueryCollection } from "../../../src/query2/index.js"
 import { createCollection } from "../../../src/collection.js"
 import { mockSyncCollectionOptions } from "../../utls.js"
 import {
+  add,
   and,
-  or,
-  not,
+  coalesce,
+  concat,
   eq,
   gt,
   gte,
+  isIn,
+  length,
+  like,
+  lower,
   lt,
   lte,
-  like,
-  isIn,
+  not,
+  or,
   upper,
-  lower,
-  length,
-  concat,
-  coalesce,
-  add,
 } from "../../../src/query2/query-builder/functions.js"
 
 // Sample data types for comprehensive testing
@@ -35,125 +35,101 @@ type Employee = {
   age: number
 }
 
-type Department = {
-  id: number
-  name: string
-  budget: number
-  active: boolean
-}
-
 // Sample employee data
 const sampleEmployees: Array<Employee> = [
   {
     id: 1,
-    name: "Alice Johnson",
+    name: `Alice Johnson`,
     department_id: 1,
     salary: 75000,
     active: true,
-    hire_date: "2020-01-15",
-    email: "alice@company.com",
-    first_name: "Alice",
-    last_name: "Johnson",
+    hire_date: `2020-01-15`,
+    email: `alice@company.com`,
+    first_name: `Alice`,
+    last_name: `Johnson`,
     age: 28,
   },
   {
     id: 2,
-    name: "Bob Smith",
+    name: `Bob Smith`,
     department_id: 2,
     salary: 65000,
     active: true,
-    hire_date: "2019-03-20",
-    email: "bob@company.com",
-    first_name: "Bob",
-    last_name: "Smith",
+    hire_date: `2019-03-20`,
+    email: `bob@company.com`,
+    first_name: `Bob`,
+    last_name: `Smith`,
     age: 32,
   },
   {
     id: 3,
-    name: "Charlie Brown",
+    name: `Charlie Brown`,
     department_id: 1,
     salary: 85000,
     active: false,
-    hire_date: "2018-07-10",
+    hire_date: `2018-07-10`,
     email: null,
-    first_name: "Charlie",
-    last_name: "Brown",
+    first_name: `Charlie`,
+    last_name: `Brown`,
     age: 35,
   },
   {
     id: 4,
-    name: "Diana Miller",
+    name: `Diana Miller`,
     department_id: 3,
     salary: 95000,
     active: true,
-    hire_date: "2021-11-05",
-    email: "diana@company.com",
-    first_name: "Diana",
-    last_name: "Miller",
+    hire_date: `2021-11-05`,
+    email: `diana@company.com`,
+    first_name: `Diana`,
+    last_name: `Miller`,
     age: 29,
   },
   {
     id: 5,
-    name: "Eve Wilson",
+    name: `Eve Wilson`,
     department_id: 2,
     salary: 55000,
     active: true,
-    hire_date: "2022-02-14",
-    email: "eve@company.com",
-    first_name: "Eve",
-    last_name: "Wilson",
+    hire_date: `2022-02-14`,
+    email: `eve@company.com`,
+    first_name: `Eve`,
+    last_name: `Wilson`,
     age: 25,
   },
   {
     id: 6,
-    name: "Frank Davis",
+    name: `Frank Davis`,
     department_id: null,
     salary: 45000,
     active: false,
-    hire_date: "2017-09-30",
-    email: "frank@company.com",
-    first_name: "Frank",
-    last_name: "Davis",
+    hire_date: `2017-09-30`,
+    email: `frank@company.com`,
+    first_name: `Frank`,
+    last_name: `Davis`,
     age: 40,
   },
-]
-
-// Sample department data
-const sampleDepartments: Array<Department> = [
-  { id: 1, name: "Engineering", budget: 500000, active: true },
-  { id: 2, name: "Sales", budget: 300000, active: true },
-  { id: 3, name: "Marketing", budget: 200000, active: false },
 ]
 
 function createEmployeesCollection() {
   return createCollection(
     mockSyncCollectionOptions<Employee>({
-      id: "test-employees",
+      id: `test-employees`,
       getKey: (emp) => emp.id,
       initialData: sampleEmployees,
     })
   )
 }
 
-function createDepartmentsCollection() {
-  return createCollection(
-    mockSyncCollectionOptions<Department>({
-      id: "test-departments",
-      getKey: (dept) => dept.id,
-      initialData: sampleDepartments,
-    })
-  )
-}
-
-describe("Query WHERE Execution", () => {
-  describe("Comparison Operators", () => {
+describe(`Query WHERE Execution`, () => {
+  describe(`Comparison Operators`, () => {
     let employeesCollection: ReturnType<typeof createEmployeesCollection>
 
     beforeEach(() => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test("eq operator - equality comparison", async () => {
+    test(`eq operator - equality comparison`, async () => {
       const activeEmployees = createLiveQueryCollection({
         query: (q) =>
           q
@@ -179,40 +155,40 @@ describe("Query WHERE Execution", () => {
       })
 
       expect(specificEmployee.size).toBe(1)
-      expect(specificEmployee.get(1)?.name).toBe("Alice Johnson")
+      expect(specificEmployee.get(1)?.name).toBe(`Alice Johnson`)
 
       // Test live updates
       const newEmployee: Employee = {
         id: 7,
-        name: "Grace Lee",
+        name: `Grace Lee`,
         department_id: 1,
         salary: 70000,
         active: true,
-        hire_date: "2023-01-10",
-        email: "grace@company.com",
-        first_name: "Grace",
-        last_name: "Lee",
+        hire_date: `2023-01-10`,
+        email: `grace@company.com`,
+        first_name: `Grace`,
+        last_name: `Lee`,
         age: 27,
       }
 
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "insert", value: newEmployee })
+      employeesCollection.utils.write({ type: `insert`, value: newEmployee })
       employeesCollection.utils.commit()
 
       expect(activeEmployees.size).toBe(5) // Should include Grace
-      expect(activeEmployees.get(7)?.name).toBe("Grace Lee")
+      expect(activeEmployees.get(7)?.name).toBe(`Grace Lee`)
 
       // Update Grace to inactive
       const inactiveGrace = { ...newEmployee, active: false }
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "update", value: inactiveGrace })
+      employeesCollection.utils.write({ type: `update`, value: inactiveGrace })
       employeesCollection.utils.commit()
 
       expect(activeEmployees.size).toBe(4) // Should exclude Grace
       expect(activeEmployees.get(7)).toBeUndefined()
     })
 
-    test("gt operator - greater than comparison", async () => {
+    test(`gt operator - greater than comparison`, async () => {
       const highEarners = createLiveQueryCollection({
         query: (q) =>
           q
@@ -234,7 +210,11 @@ describe("Query WHERE Execution", () => {
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) => gt(emp.age, 30))
-            .select(({ emp }) => ({ id: emp.id, name: emp.name, age: emp.age })),
+            .select(({ emp }) => ({
+              id: emp.id,
+              name: emp.name,
+              age: emp.age,
+            })),
       })
 
       expect(seniors.size).toBe(3) // Bob (32), Charlie (35), Frank (40)
@@ -242,26 +222,29 @@ describe("Query WHERE Execution", () => {
       // Test live updates
       const youngerEmployee: Employee = {
         id: 8,
-        name: "Henry Young",
+        name: `Henry Young`,
         department_id: 1,
         salary: 80000, // Above 70k threshold
         active: true,
-        hire_date: "2023-01-15",
-        email: "henry@company.com",
-        first_name: "Henry",
-        last_name: "Young",
+        hire_date: `2023-01-15`,
+        email: `henry@company.com`,
+        first_name: `Henry`,
+        last_name: `Young`,
         age: 26, // Below 30 threshold
       }
 
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "insert", value: youngerEmployee })
+      employeesCollection.utils.write({
+        type: `insert`,
+        value: youngerEmployee,
+      })
       employeesCollection.utils.commit()
 
       expect(highEarners.size).toBe(4) // Should include Henry (salary > 70k)
       expect(seniors.size).toBe(3) // Should not include Henry (age <= 30)
     })
 
-    test("gte operator - greater than or equal comparison", async () => {
+    test(`gte operator - greater than or equal comparison`, async () => {
       const wellPaid = createLiveQueryCollection({
         query: (q) =>
           q
@@ -289,7 +272,7 @@ describe("Query WHERE Execution", () => {
       expect(exactMatch.toArray.some((emp) => emp.salary === 65000)).toBe(true) // Bob
     })
 
-    test("lt operator - less than comparison", async () => {
+    test(`lt operator - less than comparison`, async () => {
       const juniorSalary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -311,13 +294,17 @@ describe("Query WHERE Execution", () => {
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) => lt(emp.age, 30))
-            .select(({ emp }) => ({ id: emp.id, name: emp.name, age: emp.age })),
+            .select(({ emp }) => ({
+              id: emp.id,
+              name: emp.name,
+              age: emp.age,
+            })),
       })
 
       expect(youngEmployees.size).toBe(3) // Alice (28), Diana (29), Eve (25)
     })
 
-    test("lte operator - less than or equal comparison", async () => {
+    test(`lte operator - less than or equal comparison`, async () => {
       const modestSalary = createLiveQueryCollection({
         query: (q) =>
           q
@@ -331,21 +318,25 @@ describe("Query WHERE Execution", () => {
       })
 
       expect(modestSalary.size).toBe(3) // Bob, Eve, Frank
-      expect(modestSalary.toArray.every((emp) => emp.salary <= 65000)).toBe(true)
+      expect(modestSalary.toArray.every((emp) => emp.salary <= 65000)).toBe(
+        true
+      )
 
       // Test boundary condition
-      expect(modestSalary.toArray.some((emp) => emp.salary === 65000)).toBe(true) // Bob
+      expect(modestSalary.toArray.some((emp) => emp.salary === 65000)).toBe(
+        true
+      ) // Bob
     })
   })
 
-  describe("Boolean Operators", () => {
+  describe(`Boolean Operators`, () => {
     let employeesCollection: ReturnType<typeof createEmployeesCollection>
 
     beforeEach(() => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test("and operator - logical AND", async () => {
+    test(`and operator - logical AND`, async () => {
       const activeHighEarners = createLiveQueryCollection({
         query: (q) =>
           q
@@ -391,14 +382,12 @@ describe("Query WHERE Execution", () => {
       expect(specificGroup.size).toBe(3) // Alice, Bob, Eve
     })
 
-    test("or operator - logical OR", async () => {
+    test(`or operator - logical OR`, async () => {
       const seniorOrHighPaid = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
-            .where(({ emp }) =>
-              or(gt(emp.age, 33), gt(emp.salary, 80000))
-            )
+            .where(({ emp }) => or(gt(emp.age, 33), gt(emp.salary, 80000)))
             .select(({ emp }) => ({
               id: emp.id,
               name: emp.name,
@@ -427,7 +416,7 @@ describe("Query WHERE Execution", () => {
       expect(specificDepartments.size).toBe(3) // Alice, Charlie (dept 1), Diana (dept 3)
     })
 
-    test("not operator - logical NOT", async () => {
+    test(`not operator - logical NOT`, async () => {
       const inactiveEmployees = createLiveQueryCollection({
         query: (q) =>
           q
@@ -457,10 +446,12 @@ describe("Query WHERE Execution", () => {
       })
 
       expect(notHighEarners.size).toBe(3) // Bob, Eve, Frank
-      expect(notHighEarners.toArray.every((emp) => emp.salary <= 70000)).toBe(true)
+      expect(notHighEarners.toArray.every((emp) => emp.salary <= 70000)).toBe(
+        true
+      )
     })
 
-    test("complex nested boolean conditions", async () => {
+    test(`complex nested boolean conditions`, async () => {
       const complexQuery = createLiveQueryCollection({
         query: (q) =>
           q
@@ -487,31 +478,31 @@ describe("Query WHERE Execution", () => {
     })
   })
 
-  describe("String Operators", () => {
+  describe(`String Operators`, () => {
     let employeesCollection: ReturnType<typeof createEmployeesCollection>
 
     beforeEach(() => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test("like operator - pattern matching", async () => {
+    test(`like operator - pattern matching`, async () => {
       const johnsonFamily = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
-            .where(({ emp }) => like(emp.name, "%Johnson%"))
+            .where(({ emp }) => like(emp.name, `%Johnson%`))
             .select(({ emp }) => ({ id: emp.id, name: emp.name })),
       })
 
       expect(johnsonFamily.size).toBe(1) // Alice Johnson
-      expect(johnsonFamily.get(1)?.name).toBe("Alice Johnson")
+      expect(johnsonFamily.get(1)?.name).toBe(`Alice Johnson`)
 
       // Test starts with pattern
       const startsWithB = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
-            .where(({ emp }) => like(emp.name, "B%"))
+            .where(({ emp }) => like(emp.name, `B%`))
             .select(({ emp }) => ({ id: emp.id, name: emp.name })),
       })
 
@@ -522,7 +513,7 @@ describe("Query WHERE Execution", () => {
         query: (q) =>
           q
             .from({ emp: employeesCollection })
-            .where(({ emp }) => like(emp.name, "%er"))
+            .where(({ emp }) => like(emp.name, `%er`))
             .select(({ emp }) => ({ id: emp.id, name: emp.name })),
       })
 
@@ -533,7 +524,7 @@ describe("Query WHERE Execution", () => {
         query: (q) =>
           q
             .from({ emp: employeesCollection })
-            .where(({ emp }) => like(emp.email, "%@company.com"))
+            .where(({ emp }) => like(emp.email, `%@company.com`))
             .select(({ emp }) => ({ id: emp.id, email: emp.email })),
       })
 
@@ -541,14 +532,14 @@ describe("Query WHERE Execution", () => {
     })
   })
 
-  describe("Array Operators", () => {
+  describe(`Array Operators`, () => {
     let employeesCollection: ReturnType<typeof createEmployeesCollection>
 
     beforeEach(() => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test("isIn operator - membership testing", async () => {
+    test(`isIn operator - membership testing`, async () => {
       const specificDepartments = createLiveQueryCollection({
         query: (q) =>
           q
@@ -596,20 +587,24 @@ describe("Query WHERE Execution", () => {
     })
   })
 
-  describe("Null Handling", () => {
+  describe(`Null Handling`, () => {
     let employeesCollection: ReturnType<typeof createEmployeesCollection>
 
     beforeEach(() => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test("null equality comparison", async () => {
+    test(`null equality comparison`, async () => {
       const nullEmails = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) => eq(emp.email, null))
-            .select(({ emp }) => ({ id: emp.id, name: emp.name, email: emp.email })),
+            .select(({ emp }) => ({
+              id: emp.id,
+              name: emp.name,
+              email: emp.email,
+            })),
       })
 
       expect(nullEmails.size).toBe(1) // Charlie
@@ -631,13 +626,17 @@ describe("Query WHERE Execution", () => {
       expect(nullDepartments.get(6)?.department_id).toBeNull()
     })
 
-    test("not null comparison", async () => {
+    test(`not null comparison`, async () => {
       const hasEmail = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) => not(eq(emp.email, null)))
-            .select(({ emp }) => ({ id: emp.id, name: emp.name, email: emp.email })),
+            .select(({ emp }) => ({
+              id: emp.id,
+              name: emp.name,
+              email: emp.email,
+            })),
       })
 
       expect(hasEmail.size).toBe(5) // All except Charlie
@@ -659,86 +658,100 @@ describe("Query WHERE Execution", () => {
     })
   })
 
-  describe("String Functions in WHERE", () => {
+  describe(`String Functions in WHERE`, () => {
     let employeesCollection: ReturnType<typeof createEmployeesCollection>
 
     beforeEach(() => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test("upper function in WHERE clause", async () => {
+    test(`upper function in WHERE clause`, async () => {
       const upperNameMatch = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
-            .where(({ emp }) => eq(upper(emp.first_name), "ALICE"))
+            .where(({ emp }) => eq(upper(emp.first_name), `ALICE`))
             .select(({ emp }) => ({ id: emp.id, name: emp.name })),
       })
 
       expect(upperNameMatch.size).toBe(1) // Alice
-      expect(upperNameMatch.get(1)?.name).toBe("Alice Johnson")
+      expect(upperNameMatch.get(1)?.name).toBe(`Alice Johnson`)
     })
 
-    test("lower function in WHERE clause", async () => {
+    test(`lower function in WHERE clause`, async () => {
       const lowerNameMatch = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
-            .where(({ emp }) => eq(lower(emp.last_name), "smith"))
+            .where(({ emp }) => eq(lower(emp.last_name), `smith`))
             .select(({ emp }) => ({ id: emp.id, name: emp.name })),
       })
 
       expect(lowerNameMatch.size).toBe(1) // Bob
-      expect(lowerNameMatch.get(2)?.name).toBe("Bob Smith")
+      expect(lowerNameMatch.get(2)?.name).toBe(`Bob Smith`)
     })
 
-    test("length function in WHERE clause", async () => {
+    test(`length function in WHERE clause`, async () => {
       const shortNames = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) => lt(length(emp.first_name), 4))
-            .select(({ emp }) => ({ id: emp.id, name: emp.name, first_name: emp.first_name })),
+            .select(({ emp }) => ({
+              id: emp.id,
+              name: emp.name,
+              first_name: emp.first_name,
+            })),
       })
 
       expect(shortNames.size).toBe(2) // Bob (3), Eve (3)
-      expect(shortNames.toArray.every((emp) => emp.first_name.length < 4)).toBe(true)
+      expect(shortNames.toArray.every((emp) => emp.first_name.length < 4)).toBe(
+        true
+      )
 
       const longNames = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) => gt(length(emp.last_name), 6))
-            .select(({ emp }) => ({ id: emp.id, name: emp.name, last_name: emp.last_name })),
+            .select(({ emp }) => ({
+              id: emp.id,
+              name: emp.name,
+              last_name: emp.last_name,
+            })),
       })
 
       expect(longNames.size).toBe(1) // Alice Johnson (7 chars)
     })
 
-    test("concat function in WHERE clause", async () => {
+    test(`concat function in WHERE clause`, async () => {
       const fullNameMatch = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) =>
-              eq(concat(emp.first_name, " ", emp.last_name), "Alice Johnson")
+              eq(concat(emp.first_name, ` `, emp.last_name), `Alice Johnson`)
             )
             .select(({ emp }) => ({ id: emp.id, name: emp.name })),
       })
 
       expect(fullNameMatch.size).toBe(1) // Alice
-      expect(fullNameMatch.get(1)?.name).toBe("Alice Johnson")
+      expect(fullNameMatch.get(1)?.name).toBe(`Alice Johnson`)
     })
 
-    test("coalesce function in WHERE clause", async () => {
+    test(`coalesce function in WHERE clause`, async () => {
       const emailOrDefault = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) =>
-              like(coalesce(emp.email, "no-email@company.com"), "%no-email%")
+              like(coalesce(emp.email, `no-email@company.com`), `%no-email%`)
             )
-            .select(({ emp }) => ({ id: emp.id, name: emp.name, email: emp.email })),
+            .select(({ emp }) => ({
+              id: emp.id,
+              name: emp.name,
+              email: emp.email,
+            })),
       })
 
       expect(emailOrDefault.size).toBe(1) // Charlie (null email becomes "no-email@company.com")
@@ -746,14 +759,14 @@ describe("Query WHERE Execution", () => {
     })
   })
 
-  describe("Math Functions in WHERE", () => {
+  describe(`Math Functions in WHERE`, () => {
     let employeesCollection: ReturnType<typeof createEmployeesCollection>
 
     beforeEach(() => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test("add function in WHERE clause", async () => {
+    test(`add function in WHERE clause`, async () => {
       const salaryPlusBonus = createLiveQueryCollection({
         query: (q) =>
           q
@@ -777,7 +790,11 @@ describe("Query WHERE Execution", () => {
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) => eq(add(emp.age, 5), 30))
-            .select(({ emp }) => ({ id: emp.id, name: emp.name, age: emp.age })),
+            .select(({ emp }) => ({
+              id: emp.id,
+              name: emp.name,
+              age: emp.age,
+            })),
       })
 
       expect(ageCheck.size).toBe(1) // Eve (25 + 5 = 30)
@@ -785,14 +802,14 @@ describe("Query WHERE Execution", () => {
     })
   })
 
-  describe("Live Updates with WHERE Clauses", () => {
+  describe(`Live Updates with WHERE Clauses`, () => {
     let employeesCollection: ReturnType<typeof createEmployeesCollection>
 
     beforeEach(() => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test("live updates with complex WHERE conditions", async () => {
+    test(`live updates with complex WHERE conditions`, async () => {
       const complexQuery = createLiveQueryCollection({
         query: (q) =>
           q
@@ -821,28 +838,28 @@ describe("Query WHERE Execution", () => {
       // Insert employee that matches criteria
       const newEmployee: Employee = {
         id: 10,
-        name: "Ian Clark",
+        name: `Ian Clark`,
         department_id: 1,
         salary: 80000, // >= 70k
         active: true,
-        hire_date: "2023-01-20",
-        email: "ian@company.com",
-        first_name: "Ian",
-        last_name: "Clark",
+        hire_date: `2023-01-20`,
+        email: `ian@company.com`,
+        first_name: `Ian`,
+        last_name: `Clark`,
         age: 30, // < 35
       }
 
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "insert", value: newEmployee })
+      employeesCollection.utils.write({ type: `insert`, value: newEmployee })
       employeesCollection.utils.commit()
 
       expect(complexQuery.size).toBe(5) // Should include Ian
-      expect(complexQuery.get(10)?.name).toBe("Ian Clark")
+      expect(complexQuery.get(10)?.name).toBe(`Ian Clark`)
 
       // Update Ian to not match criteria (age >= 35)
       const olderIan = { ...newEmployee, age: 36 }
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "update", value: olderIan })
+      employeesCollection.utils.write({ type: `update`, value: olderIan })
       employeesCollection.utils.commit()
 
       expect(complexQuery.size).toBe(4) // Should exclude Ian (age >= 35, not dept 2)
@@ -851,7 +868,7 @@ describe("Query WHERE Execution", () => {
       // Update Ian to dept 2 (should match again)
       const dept2Ian = { ...olderIan, department_id: 2 }
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "update", value: dept2Ian })
+      employeesCollection.utils.write({ type: `update`, value: dept2Ian })
       employeesCollection.utils.commit()
 
       expect(complexQuery.size).toBe(5) // Should include Ian (dept 2)
@@ -859,19 +876,19 @@ describe("Query WHERE Execution", () => {
 
       // Delete Ian
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "delete", value: dept2Ian })
+      employeesCollection.utils.write({ type: `delete`, value: dept2Ian })
       employeesCollection.utils.commit()
 
       expect(complexQuery.size).toBe(4) // Back to original
       expect(complexQuery.get(10)).toBeUndefined()
     })
 
-    test("live updates with string function WHERE conditions", async () => {
+    test(`live updates with string function WHERE conditions`, async () => {
       const nameStartsWithA = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
-            .where(({ emp }) => like(upper(emp.first_name), "A%"))
+            .where(({ emp }) => like(upper(emp.first_name), `A%`))
             .select(({ emp }) => ({
               id: emp.id,
               name: emp.name,
@@ -884,41 +901,52 @@ describe("Query WHERE Execution", () => {
       // Insert employee with name starting with 'a'
       const newEmployee: Employee = {
         id: 11,
-        name: "amy stone",
+        name: `amy stone`,
         department_id: 1,
         salary: 60000,
         active: true,
-        hire_date: "2023-01-25",
-        email: "amy@company.com",
-        first_name: "amy", // lowercase 'a'
-        last_name: "stone",
+        hire_date: `2023-01-25`,
+        email: `amy@company.com`,
+        first_name: `amy`, // lowercase 'a'
+        last_name: `stone`,
         age: 26,
       }
 
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "insert", value: newEmployee })
+      employeesCollection.utils.write({ type: `insert`, value: newEmployee })
       employeesCollection.utils.commit()
 
       expect(nameStartsWithA.size).toBe(2) // Should include amy (uppercase conversion)
-      expect(nameStartsWithA.get(11)?.first_name).toBe("amy")
+      expect(nameStartsWithA.get(11)?.first_name).toBe(`amy`)
 
       // Update amy's name to not start with 'A'
-      const renamedEmployee = { ...newEmployee, first_name: "Beth", name: "Beth stone" }
+      const renamedEmployee = {
+        ...newEmployee,
+        first_name: `Beth`,
+        name: `Beth stone`,
+      }
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "update", value: renamedEmployee })
+      employeesCollection.utils.write({
+        type: `update`,
+        value: renamedEmployee,
+      })
       employeesCollection.utils.commit()
 
       expect(nameStartsWithA.size).toBe(1) // Should exclude Beth
       expect(nameStartsWithA.get(11)).toBeUndefined()
     })
 
-    test("live updates with null handling", async () => {
+    test(`live updates with null handling`, async () => {
       const hasNullEmail = createLiveQueryCollection({
         query: (q) =>
           q
             .from({ emp: employeesCollection })
             .where(({ emp }) => eq(emp.email, null))
-            .select(({ emp }) => ({ id: emp.id, name: emp.name, email: emp.email })),
+            .select(({ emp }) => ({
+              id: emp.id,
+              name: emp.name,
+              email: emp.email,
+            })),
       })
 
       expect(hasNullEmail.size).toBe(1) // Charlie
@@ -926,10 +954,13 @@ describe("Query WHERE Execution", () => {
       // Update Charlie to have an email
       const charlieWithEmail = {
         ...sampleEmployees.find((e) => e.id === 3)!,
-        email: "charlie@company.com",
+        email: `charlie@company.com`,
       }
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "update", value: charlieWithEmail })
+      employeesCollection.utils.write({
+        type: `update`,
+        value: charlieWithEmail,
+      })
       employeesCollection.utils.commit()
 
       expect(hasNullEmail.size).toBe(0) // Should exclude Charlie
@@ -938,19 +969,19 @@ describe("Query WHERE Execution", () => {
       // Insert new employee with null email
       const newEmployee: Employee = {
         id: 12,
-        name: "Jack Null",
+        name: `Jack Null`,
         department_id: 1,
         salary: 60000,
         active: true,
-        hire_date: "2023-02-01",
+        hire_date: `2023-02-01`,
         email: null, // null email
-        first_name: "Jack",
-        last_name: "Null",
+        first_name: `Jack`,
+        last_name: `Null`,
         age: 28,
       }
 
       employeesCollection.utils.begin()
-      employeesCollection.utils.write({ type: "insert", value: newEmployee })
+      employeesCollection.utils.write({ type: `insert`, value: newEmployee })
       employeesCollection.utils.commit()
 
       expect(hasNullEmail.size).toBe(1) // Should include Jack
@@ -958,17 +989,17 @@ describe("Query WHERE Execution", () => {
     })
   })
 
-  describe("Edge Cases and Error Handling", () => {
+  describe(`Edge Cases and Error Handling`, () => {
     let employeesCollection: ReturnType<typeof createEmployeesCollection>
 
     beforeEach(() => {
       employeesCollection = createEmployeesCollection()
     })
 
-    test("empty collection handling", async () => {
+    test(`empty collection handling`, async () => {
       const emptyCollection = createCollection(
         mockSyncCollectionOptions<Employee>({
-          id: "empty-employees",
+          id: `empty-employees`,
           getKey: (emp) => emp.id,
           initialData: [],
         })
@@ -987,25 +1018,25 @@ describe("Query WHERE Execution", () => {
       // Add data to empty collection
       const newEmployee: Employee = {
         id: 1,
-        name: "First Employee",
+        name: `First Employee`,
         department_id: 1,
         salary: 60000,
         active: true,
-        hire_date: "2023-02-05",
-        email: "first@company.com",
-        first_name: "First",
-        last_name: "Employee",
+        hire_date: `2023-02-05`,
+        email: `first@company.com`,
+        first_name: `First`,
+        last_name: `Employee`,
         age: 30,
       }
 
       emptyCollection.utils.begin()
-      emptyCollection.utils.write({ type: "insert", value: newEmployee })
+      emptyCollection.utils.write({ type: `insert`, value: newEmployee })
       emptyCollection.utils.commit()
 
       expect(emptyQuery.size).toBe(1)
     })
 
-    test("multiple WHERE conditions with same field", async () => {
+    test(`multiple WHERE conditions with same field`, async () => {
       const salaryRange = createLiveQueryCollection({
         query: (q) =>
           q
@@ -1028,7 +1059,7 @@ describe("Query WHERE Execution", () => {
       ).toBe(true)
     })
 
-    test("deeply nested conditions", async () => {
+    test(`deeply nested conditions`, async () => {
       const deeplyNested = createLiveQueryCollection({
         query: (q) =>
           q

@@ -109,9 +109,16 @@ export function toExpression(value: any): Expression<any> {
   if (isRefProxy(value)) {
     return new Ref(value.__path)
   }
-  // If it's already an Expression (Func, Ref, Value), return it directly
-  if (value && typeof value === 'object' && 'type' in value && 
-      (value.type === 'func' || value.type === 'ref' || value.type === 'val')) {
+  // If it's already an Expression (Func, Ref, Value) or Agg, return it directly
+  if (
+    value &&
+    typeof value === `object` &&
+    `type` in value &&
+    (value.type === `func` ||
+      value.type === `ref` ||
+      value.type === `val` ||
+      value.type === `agg`)
+  ) {
     return value
   }
   return new Value(value)
