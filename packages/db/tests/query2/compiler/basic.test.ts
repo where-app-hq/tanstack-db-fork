@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest"
 import { D2, MultiSet, output } from "@electric-sql/d2mini"
 import { compileQuery } from "../../../src/query2/compiler/index.js"
-import { CollectionRef, Ref, Value } from "../../../src/query2/ir.js"
+import { CollectionRef, Func, Ref, Value } from "../../../src/query2/ir.js"
 import type { Query } from "../../../src/query2/ir.js"
 import type { CollectionImpl } from "../../../src/collection.js"
 
@@ -147,11 +147,7 @@ describe(`Query2 Compiler`, () => {
           name: new Ref([`users`, `name`]),
           age: new Ref([`users`, `age`]),
         },
-        where: {
-          type: `func`,
-          name: `gt`,
-          args: [new Ref([`users`, `age`]), new Value(20)],
-        },
+        where: new Func(`gt`, [new Ref([`users`, `age`]), new Value(20)]),
       }
 
       const graph = new D2()
@@ -200,22 +196,10 @@ describe(`Query2 Compiler`, () => {
           id: new Ref([`users`, `id`]),
           name: new Ref([`users`, `name`]),
         },
-        where: {
-          type: `func`,
-          name: `and`,
-          args: [
-            {
-              type: `func`,
-              name: `gt`,
-              args: [new Ref([`users`, `age`]), new Value(20)],
-            },
-            {
-              type: `func`,
-              name: `eq`,
-              args: [new Ref([`users`, `active`]), new Value(true)],
-            },
-          ],
-        },
+        where: new Func(`and`, [
+          new Func(`gt`, [new Ref([`users`, `age`]), new Value(20)]),
+          new Func(`eq`, [new Ref([`users`, `active`]), new Value(true)]),
+        ]),
       }
 
       const graph = new D2()
