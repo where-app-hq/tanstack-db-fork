@@ -233,12 +233,10 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
       ? result.map((r) => toExpression(r))
       : [toExpression(result)]
 
-    // Extend existing groupBy expressions instead of replacing them
-    const existingGroupBy = this.query.groupBy || []
-
+    // Replace existing groupBy expressions instead of extending them
     return new BaseQueryBuilder({
       ...this.query,
-      groupBy: [...existingGroupBy, ...newExpressions],
+      groupBy: newExpressions,
     }) as any
   }
 

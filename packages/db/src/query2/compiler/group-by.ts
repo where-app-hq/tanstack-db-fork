@@ -252,7 +252,20 @@ function transformHavingClause(
       return new Func(funcExpr.name, transformedArgs)
     }
 
-    case `ref`:
+    case `ref`: {
+      const refExpr = havingExpr
+      // Check if this is a direct reference to a SELECT alias
+      if (refExpr.path.length === 1) {
+        const alias = refExpr.path[0]!
+        if (selectClause[alias]) {
+          // This is a reference to a SELECT alias, convert to result.alias
+          return new Ref([`result`, alias])
+        }
+      }
+      // Return as-is for other refs
+      return havingExpr as Expression
+    }
+
     case `val`:
       // Return as-is
       return havingExpr as Expression
