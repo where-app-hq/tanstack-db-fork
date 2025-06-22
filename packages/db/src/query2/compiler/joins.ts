@@ -178,7 +178,7 @@ function processJoinResults(joinType: string) {
         const joinedNamespacedRow = joined?.[1]
 
         // Handle different join types
-        if (joinType === `inner` || joinType === `cross`) {
+        if (joinType === `inner`) {
           return !!(mainNamespacedRow && joinedNamespacedRow)
         }
 
@@ -213,8 +213,8 @@ function processJoinResults(joinType: string) {
           Object.assign(mergedNamespacedRow, joinedNamespacedRow)
         }
 
-        // Use the main key if available, otherwise use the joined key
-        const resultKey = mainKey || joinedKey || ``
+        // We create a composite key that combines the main and joined keys
+        const resultKey = `[${mainKey},${joinedKey}]`
 
         return [resultKey, mergedNamespacedRow] as [string, NamespacedRow]
       })

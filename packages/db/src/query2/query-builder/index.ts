@@ -84,7 +84,7 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     onCallback: JoinOnCallback<
       MergeContext<TContext, SchemaFromSource<TSource>>
     >,
-    type: `inner` | `left` | `right` | `full` | `cross` = `inner`
+    type: `inner` | `left` | `right` | `full` = `left`
   ): QueryBuilder<MergeContext<TContext, SchemaFromSource<TSource>>> {
     if (Object.keys(source).length !== 1) {
       throw new Error(`Only one source is allowed in the join clause`)
