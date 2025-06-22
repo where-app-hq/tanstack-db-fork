@@ -18,8 +18,9 @@ import type {
   MergeContext,
   OrderByCallback,
   RefProxyForContext,
+  ResultTypeFromSelect,
   SchemaFromSource,
-  SelectCallback,
+  SelectObject,
   Source,
   WhereCallback,
   WithResult,
@@ -173,9 +174,9 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
   }
 
   // SELECT method
-  select<TResult extends Record<string, any>>(
-    callback: SelectCallback<TContext>
-  ): QueryBuilder<WithResult<TContext, TResult>> {
+  select<TSelectObject extends SelectObject>(
+    callback: (refs: RefProxyForContext<TContext>) => TSelectObject
+  ): QueryBuilder<WithResult<TContext, ResultTypeFromSelect<TSelectObject>>> {
     const aliases = this._getCurrentAliases()
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
     const selectObject = callback(refProxy)
@@ -185,9 +186,19 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     for (const [key, value] of Object.entries(selectObject)) {
       if (isRefProxy(value)) {
         select[key] = toExpression(value)
-      } else if (value && typeof value === `object` && value.type === `agg`) {
-        select[key] = value as Agg
-      } else if (value && typeof value === `object` && value.type === `func`) {
+      } else if (
+        value &&
+        typeof value === `object` &&
+        `type` in value &&
+        value.type === `agg`
+      ) {
+        select[key] = value
+      } else if (
+        value &&
+        typeof value === `object` &&
+        `type` in value &&
+        value.type === `func`
+      ) {
         select[key] = value as Expression
       } else {
         select[key] = toExpression(value)

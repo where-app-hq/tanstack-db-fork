@@ -379,10 +379,14 @@ export function sum(
   return new Agg(`sum`, [toExpression(arg)])
 }
 
-export function min<T>(arg: T | Expression<T>): Agg<T> {
+export function min(
+  arg: RefProxy<number> | number | Expression<number>
+): Agg<number> {
   return new Agg(`min`, [toExpression(arg)])
 }
 
-export function max<T>(arg: T | Expression<T>): Agg<T> {
+export function max(
+  arg: RefProxy<number> | number | Expression<number>
+): Agg<number> {
   return new Agg(`max`, [toExpression(arg)])
 }

@@ -1,4 +1,5 @@
 import type { CollectionImpl } from "../../collection.js"
+import type { Agg, Expression } from "../ir.js"
 import type { QueryBuilder } from "./index.js"
 
 export interface Context {
@@ -41,10 +42,28 @@ export type WhereCallback<TContext extends Context> = (
   refs: RefProxyForContext<TContext>
 ) => any
 
-// Callback type for select clauses
-export type SelectCallback<TContext extends Context> = (
-  refs: RefProxyForContext<TContext>
-) => Record<string, any>
+// Callback return type for select clauses
+export type SelectObject<
+  T extends Record<
+    string,
+    Expression | Agg | RefProxy | RefProxyFor<any>
+  > = Record<string, Expression | Agg | RefProxy | RefProxyFor<any>>,
+> = T
+
+// Helper type to get the result type from a select object
+export type ResultTypeFromSelect<TSelectObject> = {
+  [K in keyof TSelectObject]: TSelectObject[K] extends RefProxy<infer T>
+    ? T
+    : TSelectObject[K] extends Expression<infer T>
+      ? T
+      : TSelectObject[K] extends Agg<infer T>
+        ? T
+        : TSelectObject[K] extends RefProxy<infer T>
+          ? T
+          : TSelectObject[K] extends RefProxyFor<infer T>
+            ? T
+            : never
+}
 
 // Callback type for orderBy clauses
 export type OrderByCallback<TContext extends Context> = (
@@ -107,9 +126,15 @@ export type WithResult<TContext extends Context, TResult> = Omit<
 }
 
 // Helper type to get the result type from a context
-export type GetResult<TContext extends Context> =
+export type GetResult<TContext extends Context> = Prettify<
   TContext[`result`] extends undefined
     ? TContext[`hasJoins`] extends true
       ? TContext[`schema`]
       : TContext[`schema`]
     : TContext[`result`]
+>
+
+// Helper type to simplify complex types for better editor hints
+export type Prettify<T> = {
+  [K in keyof T]: T[K]
+} & {}

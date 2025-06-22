@@ -67,19 +67,19 @@ export interface LiveQueryCollectionConfig<
    * Function to extract the key from result items
    * If not provided, defaults to using the key from the D2 stream
    */
-  getKey?: (item: TResult & { _key?: string | number }) => string | number
+  getKey?: (item: TResult) => string | number
 
   /**
    * Optional schema for validation
    */
-  schema?: CollectionConfig<TResult & { _key?: string | number }>[`schema`]
+  schema?: CollectionConfig<TResult>[`schema`]
 
   /**
    * Optional mutation handlers
    */
-  onInsert?: CollectionConfig<TResult & { _key?: string | number }>[`onInsert`]
-  onUpdate?: CollectionConfig<TResult & { _key?: string | number }>[`onUpdate`]
-  onDelete?: CollectionConfig<TResult & { _key?: string | number }>[`onDelete`]
+  onInsert?: CollectionConfig<TResult>[`onInsert`]
+  onUpdate?: CollectionConfig<TResult>[`onUpdate`]
+  onDelete?: CollectionConfig<TResult>[`onDelete`]
 }
 
 /**
@@ -112,15 +112,19 @@ export function liveQueryCollectionOptions<
   TUtils extends UtilsRecord = {},
 >(
   config: LiveQueryCollectionConfig<TContext, TResult>
-): CollectionConfig<TResult & { _key?: string | number }> & { utils?: TUtils } {
+): CollectionConfig<TResult> & { utils?: TUtils } {
   // Generate a unique ID if not provided
   const id = config.id || `live-query-${++liveQueryCollectionCounter}`
 
   // Build the query using the provided query builder function
   const query = buildQuery(config.query)
 
+  // WeakMap to store the keys of the results so that we can retreve them in the
+  // getKey function
+  const resultKeys = new WeakMap<object, unknown>()
+
   // Create the sync configuration
-  const sync: SyncConfig<TResult & { _key?: string | number }> = {
+  const sync: SyncConfig<TResult> = {
     sync: ({ begin, write, commit }) => {
       // Extract collections from the query
       const collections = extractCollectionsFromQuery(query)
@@ -160,23 +164,24 @@ export function liveQueryCollectionOptions<
             }, new Map<unknown, { deletes: number; inserts: number; value: TResult }>())
             .forEach((changes, rawKey) => {
               const { deletes, inserts, value } = changes
-              const valueWithKey = { ...value, _key: rawKey } as TResult & {
-                _key: string | number
-              }
+
+              // Store the key of the result so that we can retrieve it in the
+              // getKey function
+              resultKeys.set(value, rawKey)
 
               if (inserts && !deletes) {
                 write({
-                  value: valueWithKey,
+                  value,
                   type: `insert`,
                 })
               } else if (inserts >= deletes) {
                 write({
-                  value: valueWithKey,
+                  value,
                   type: `update`,
                 })
               } else if (deletes > 0) {
                 write({
-                  value: valueWithKey,
+                  value,
                   type: `delete`,
                 })
               }
@@ -212,7 +217,8 @@ export function liveQueryCollectionOptions<
   // Return collection configuration
   return {
     id,
-    getKey: config.getKey || ((item) => item._key as string | number),
+    getKey:
+      config.getKey || ((item) => resultKeys.get(item) as string | number),
     sync,
     schema: config.schema,
     onInsert: config.onInsert,
@@ -258,30 +264,30 @@ export function liveQueryCollectionOptions<
 // Overload 1: Accept just the query function
 export function createLiveQueryCollection<
   TContext extends Context,
-  TResult extends object = GetResult<TContext> & object,
+  TResult extends object = GetResult<TContext>,
 >(
   query: (q: InitialQueryBuilder) => QueryBuilder<TContext>
-): Collection<TResult & { _key?: string | number }, string | number, {}>
+): Collection<TResult, string | number, {}>
 
 // Overload 2: Accept full config object with optional utilities
 export function createLiveQueryCollection<
   TContext extends Context,
-  TResult extends object = GetResult<TContext> & object,
+  TResult extends object = GetResult<TContext>,
   TUtils extends UtilsRecord = {},
 >(
   config: LiveQueryCollectionConfig<TContext, TResult> & { utils?: TUtils }
-): Collection<TResult & { _key?: string | number }, string | number, TUtils>
+): Collection<TResult, string | number, TUtils>
 
 // Implementation
 export function createLiveQueryCollection<
   TContext extends Context,
-  TResult extends object = GetResult<TContext> & object,
+  TResult extends object = GetResult<TContext>,
   TUtils extends UtilsRecord = {},
 >(
   configOrQuery:
     | (LiveQueryCollectionConfig<TContext, TResult> & { utils?: TUtils })
     | ((q: InitialQueryBuilder) => QueryBuilder<TContext>)
-): Collection<TResult & { _key?: string | number }, string | number, TUtils> {
+): Collection<TResult, string | number, TUtils> {
   // Determine if the argument is a function (query) or a config object
   if (typeof configOrQuery === `function`) {
     // Simple query function case
@@ -292,11 +298,7 @@ export function createLiveQueryCollection<
 
     return createCollection({
       ...options,
-    }) as Collection<
-      TResult & { _key?: string | number },
-      string | number,
-      TUtils
-    >
+    }) as Collection<TResult, string | number, TUtils>
   } else {
     // Config object case
     const config = configOrQuery as LiveQueryCollectionConfig<
