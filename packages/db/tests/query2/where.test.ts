@@ -19,7 +19,7 @@ import {
   not,
   or,
   upper,
-} from "../../src/query2/query-builder/functions.js"
+} from "../../src/query2/builder/functions.js"
 
 // Sample data types for comprehensive testing
 type Employee = {

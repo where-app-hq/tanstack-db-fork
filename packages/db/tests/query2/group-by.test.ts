@@ -14,7 +14,7 @@ import {
   min,
   or,
   sum,
-} from "../../src/query2/query-builder/functions.js"
+} from "../../src/query2/builder/functions.js"
 
 // Sample data types for comprehensive GROUP BY testing
 type Order = {

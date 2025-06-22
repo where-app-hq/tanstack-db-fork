@@ -9,7 +9,7 @@ export {
   type Context,
   type Source,
   type GetResult,
-} from "./query-builder/index.js"
+} from "./builder/index.js"
 
 // Expression functions exports
 export {
@@ -38,10 +38,10 @@ export {
   sum,
   min,
   max,
-} from "./query-builder/functions.js"
+} from "./builder/functions.js"
 
 // Ref proxy utilities
-export { val, toExpression, isRefProxy } from "./query-builder/ref-proxy.js"
+export { val, toExpression, isRefProxy } from "./builder/ref-proxy.js"
 
 // IR types (for advanced usage)
 export type {

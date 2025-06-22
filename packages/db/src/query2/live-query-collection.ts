@@ -1,11 +1,8 @@
 import { D2, MultiSet, output } from "@electric-sql/d2mini"
 import { createCollection } from "../collection.js"
 import { compileQuery } from "./compiler/index.js"
-import { buildQuery } from "./query-builder/index.js"
-import type {
-  InitialQueryBuilder,
-  QueryBuilder,
-} from "./query-builder/index.js"
+import { buildQuery } from "./builder/index.js"
+import type { InitialQueryBuilder, QueryBuilder } from "./builder/index.js"
 import type { Collection } from "../collection.js"
 import type {
   ChangeMessage,
@@ -14,7 +11,7 @@ import type {
   SyncConfig,
   UtilsRecord,
 } from "../types.js"
-import type { Context, GetResult } from "./query-builder/types.js"
+import type { Context, GetResult } from "./builder/types.js"
 import type {
   IStreamBuilder,
   MultiSetArray,

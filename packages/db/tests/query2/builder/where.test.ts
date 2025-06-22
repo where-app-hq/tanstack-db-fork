@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
-import { BaseQueryBuilder } from "../../../src/query2/query-builder/index.js"
+import { BaseQueryBuilder } from "../../../src/query2/builder/index.js"
 import {
   and,
   eq,
@@ -12,7 +12,7 @@ import {
   lte,
   not,
   or,
-} from "../../../src/query2/query-builder/functions.js"
+} from "../../../src/query2/builder/functions.js"
 
 // Test schema
 interface Employee {
