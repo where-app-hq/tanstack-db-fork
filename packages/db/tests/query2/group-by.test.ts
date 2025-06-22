@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "vitest"
+import { beforeEach, describe, expect, expectTypeOf, test } from "vitest"
 import { createLiveQueryCollection } from "../../src/query2/index.js"
 import { createCollection } from "../../src/collection.js"
 import { mockSyncCollectionOptions } from "../utls.js"
@@ -148,6 +148,17 @@ describe(`Query GROUP BY Execution`, () => {
 
       // Customer 1: orders 1, 2, 7 (amounts: 100, 200, 400)
       const customer1 = customerSummary.get(1)
+      expectTypeOf(customer1).toEqualTypeOf<
+        | {
+            customer_id: number
+            total_amount: number
+            order_count: number
+            avg_amount: number
+            min_amount: number
+            max_amount: number
+          }
+        | undefined
+      >()
       expect(customer1).toBeDefined()
       expect(customer1?.customer_id).toBe(1)
       expect(customer1?.total_amount).toBe(700)
@@ -195,6 +206,15 @@ describe(`Query GROUP BY Execution`, () => {
 
       // Completed orders: 1, 2, 4, 7 (amounts: 100, 200, 300, 400)
       const completed = statusSummary.get(`completed`)
+      expectTypeOf(completed).toEqualTypeOf<
+        | {
+            status: string
+            total_amount: number
+            order_count: number
+            avg_amount: number
+          }
+        | undefined
+      >()
       expect(completed?.status).toBe(`completed`)
       expect(completed?.total_amount).toBe(1000)
       expect(completed?.order_count).toBe(4)
@@ -233,6 +253,15 @@ describe(`Query GROUP BY Execution`, () => {
 
       // Electronics: orders 1, 2, 4, 6 (quantities: 2, 1, 1, 1)
       const electronics = categorySummary.get(`electronics`)
+      expectTypeOf(electronics).toEqualTypeOf<
+        | {
+            product_category: string
+            total_quantity: number
+            order_count: number
+            total_amount: number
+          }
+        | undefined
+      >()
       expect(electronics?.product_category).toBe(`electronics`)
       expect(electronics?.total_quantity).toBe(5)
       expect(electronics?.order_count).toBe(4)
@@ -272,6 +301,15 @@ describe(`Query GROUP BY Execution`, () => {
 
       // Customer 1, completed: orders 1, 2, 7
       const customer1Completed = customerStatusSummary.get(`[1,"completed"]`)
+      expectTypeOf(customer1Completed).toEqualTypeOf<
+        | {
+            customer_id: number
+            status: string
+            total_amount: number
+            order_count: number
+          }
+        | undefined
+      >()
       expect(customer1Completed?.customer_id).toBe(1)
       expect(customer1Completed?.status).toBe(`completed`)
       expect(customer1Completed?.total_amount).toBe(700) // 100+200+400
@@ -327,6 +365,16 @@ describe(`Query GROUP BY Execution`, () => {
       const completedElectronics = statusCategorySummary.get(
         `["completed","electronics"]`
       )
+      expectTypeOf(completedElectronics).toEqualTypeOf<
+        | {
+            status: string
+            product_category: string
+            total_amount: number
+            avg_quantity: number
+            order_count: number
+          }
+        | undefined
+      >()
       expect(completedElectronics?.status).toBe(`completed`)
       expect(completedElectronics?.product_category).toBe(`electronics`)
       expect(completedElectronics?.total_amount).toBe(600) // 100+200+300
@@ -360,6 +408,14 @@ describe(`Query GROUP BY Execution`, () => {
 
       // Customer 1: completed orders 1, 2, 7
       const customer1 = completedOrdersSummary.get(1)
+      expectTypeOf(customer1).toEqualTypeOf<
+        | {
+            customer_id: number
+            total_amount: number
+            order_count: number
+          }
+        | undefined
+      >()
       expect(customer1?.customer_id).toBe(1)
       expect(customer1?.total_amount).toBe(700) // 100+200+400
       expect(customer1?.order_count).toBe(3)
@@ -395,6 +451,15 @@ describe(`Query GROUP BY Execution`, () => {
       expect(highValueOrdersSummary.size).toBe(2) // electronics and books
 
       const electronics = highValueOrdersSummary.get(`electronics`)
+      expectTypeOf(electronics).toEqualTypeOf<
+        | {
+            product_category: string
+            total_amount: number
+            order_count: number
+            avg_amount: number
+          }
+        | undefined
+      >()
       expect(electronics?.total_amount).toBe(500) // 200+300
       expect(electronics?.order_count).toBe(2)
 
@@ -429,6 +494,14 @@ describe(`Query GROUP BY Execution`, () => {
       expect(highVolumeCustomers.size).toBe(1)
 
       const customer1 = highVolumeCustomers.get(1)
+      expectTypeOf(customer1).toEqualTypeOf<
+        | {
+            customer_id: number
+            total_amount: number
+            order_count: number
+          }
+        | undefined
+      >()
       expect(customer1?.customer_id).toBe(1)
       expect(customer1?.order_count).toBe(3)
       expect(customer1?.total_amount).toBe(700)
@@ -454,6 +527,15 @@ describe(`Query GROUP BY Execution`, () => {
       expect(highValueCustomers.size).toBe(2)
 
       const customer1 = highValueCustomers.get(1)
+      expectTypeOf(customer1).toEqualTypeOf<
+        | {
+            customer_id: number
+            total_amount: number
+            order_count: number
+            avg_amount: number
+          }
+        | undefined
+      >()
       expect(customer1?.customer_id).toBe(1)
       expect(customer1?.total_amount).toBe(700)
 
@@ -482,6 +564,15 @@ describe(`Query GROUP BY Execution`, () => {
       expect(consistentCustomers.size).toBe(2)
 
       const customer1 = consistentCustomers.get(1)
+      expectTypeOf(customer1).toEqualTypeOf<
+        | {
+            customer_id: number
+            total_amount: number
+            order_count: number
+            avg_amount: number
+          }
+        | undefined
+      >()
       expect(customer1?.avg_amount).toBeCloseTo(233.33, 2)
 
       const customer2 = consistentCustomers.get(2)
@@ -511,7 +602,18 @@ describe(`Query GROUP BY Execution`, () => {
       // Customer 3: 2 orders, 325 total ✗
       expect(premiumCustomers.size).toBe(2)
 
-      expect(premiumCustomers.get(1)).toBeDefined()
+      const customer1 = premiumCustomers.get(1)
+      expectTypeOf(customer1).toEqualTypeOf<
+        | {
+            customer_id: number
+            total_amount: number
+            order_count: number
+            avg_amount: number
+          }
+        | undefined
+      >()
+
+      expect(customer1).toBeDefined()
       expect(premiumCustomers.get(2)).toBeDefined()
     })
 
@@ -538,7 +640,18 @@ describe(`Query GROUP BY Execution`, () => {
       // Customer 3: 2 orders, min 75 ✓
       expect(interestingCustomers.size).toBe(2)
 
-      expect(interestingCustomers.get(1)).toBeDefined()
+      const customer1 = interestingCustomers.get(1)
+      expectTypeOf(customer1).toEqualTypeOf<
+        | {
+            customer_id: number
+            total_amount: number
+            order_count: number
+            min_amount: number
+          }
+        | undefined
+      >()
+
+      expect(customer1).toBeDefined()
       expect(interestingCustomers.get(3)).toBeDefined()
     })
 
@@ -662,6 +775,14 @@ describe(`Query GROUP BY Execution`, () => {
       expect(customerSummary.size).toBe(3)
 
       const initialCustomer1 = customerSummary.get(1)
+      expectTypeOf(initialCustomer1).toEqualTypeOf<
+        | {
+            customer_id: number
+            total_amount: number
+            order_count: number
+          }
+        | undefined
+      >()
       expect(initialCustomer1?.total_amount).toBe(700)
       expect(initialCustomer1?.order_count).toBe(3)
 
@@ -817,6 +938,14 @@ describe(`Query GROUP BY Execution`, () => {
 
       // Sales rep 1: orders 1, 2, 6
       const salesRep1 = salesRepSummary.get(1)
+      expectTypeOf(salesRep1).toEqualTypeOf<
+        | {
+            sales_rep_id: number | null
+            total_amount: number
+            order_count: number
+          }
+        | undefined
+      >()
       expect(salesRep1?.sales_rep_id).toBe(1)
       expect(salesRep1?.total_amount).toBe(375) // 100+200+75
       expect(salesRep1?.order_count).toBe(3)
@@ -903,6 +1032,21 @@ describe(`Query GROUP BY Execution`, () => {
       expect(comprehensiveStats.size).toBe(3)
 
       const customer1 = comprehensiveStats.get(1)
+      expectTypeOf(customer1).toEqualTypeOf<
+        | {
+            customer_id: number
+            order_count: number
+            total_amount: number
+            avg_amount: number
+            min_amount: number
+            max_amount: number
+            total_quantity: number
+            avg_quantity: number
+            min_quantity: number
+            max_quantity: number
+          }
+        | undefined
+      >()
       expect(customer1?.customer_id).toBe(1)
       expect(customer1?.order_count).toBe(3)
       expect(customer1?.total_amount).toBe(700)

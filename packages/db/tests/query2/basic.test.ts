@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "vitest"
+import { beforeEach, describe, expect, expectTypeOf, test } from "vitest"
 import { createLiveQueryCollection, eq, gt } from "../../src/query2/index.js"
 import { createCollection } from "../../src/collection.js"
 import { mockSyncCollectionOptions } from "../utls.js"
@@ -57,6 +57,15 @@ describe(`Query`, () => {
       })
 
       const results = liveCollection.toArray
+      expectTypeOf(results).toEqualTypeOf<
+        Array<{
+          id: number
+          name: string
+          age: number
+          email: string
+          active: boolean
+        }>
+      >()
 
       expect(results).toHaveLength(4)
       expect(results.map((u) => u.name)).toEqual(
@@ -117,6 +126,15 @@ describe(`Query`, () => {
       )
 
       const results = liveCollection.toArray
+      expectTypeOf(results).toEqualTypeOf<
+        Array<{
+          id: number
+          name: string
+          age: number
+          email: string
+          active: boolean
+        }>
+      >()
 
       expect(results).toHaveLength(4)
       expect(results.map((u) => u.name)).toEqual(
@@ -179,6 +197,13 @@ describe(`Query`, () => {
       })
 
       const results = activeLiveCollection.toArray
+      expectTypeOf(results).toEqualTypeOf<
+        Array<{
+          id: number
+          name: string
+          active: boolean
+        }>
+      >()
 
       expect(results).toHaveLength(3)
       expect(results.every((u) => u.active)).toBe(true)
@@ -266,6 +291,13 @@ describe(`Query`, () => {
       })
 
       const results = projectedLiveCollection.toArray
+      expectTypeOf(results).toEqualTypeOf<
+        Array<{
+          id: number
+          name: string
+          isAdult: number
+        }>
+      >()
 
       expect(results).toHaveLength(3) // Alice (25), Charlie (30), Dave (22)
 
@@ -356,6 +388,12 @@ describe(`Query`, () => {
       })
 
       const results = customKeyCollection.toArray
+      expectTypeOf(results).toEqualTypeOf<
+        Array<{
+          userId: number
+          userName: string
+        }>
+      >()
 
       expect(results).toHaveLength(4)
 
@@ -444,7 +482,20 @@ describe(`Query`, () => {
 
       // Verify collections work correctly
       const results1 = collection1.toArray
+      expectTypeOf(results1).toEqualTypeOf<
+        Array<{
+          id: number
+          name: string
+        }>
+      >()
+
       const results2 = collection2.toArray
+      expectTypeOf(results2).toEqualTypeOf<
+        Array<{
+          id: number
+          name: string
+        }>
+      >()
 
       expect(results1).toHaveLength(4) // All users
       expect(results2).toHaveLength(3) // Only active users
