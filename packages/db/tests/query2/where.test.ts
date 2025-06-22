@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest"
-import { createLiveQueryCollection } from "../../../src/query2/index.js"
-import { createCollection } from "../../../src/collection.js"
-import { mockSyncCollectionOptions } from "../../utls.js"
+import { createLiveQueryCollection } from "../../src/query2/index.js"
+import { createCollection } from "../../src/collection.js"
+import { mockSyncCollectionOptions } from "../utls.js"
 import {
   add,
   and,
@@ -19,7 +19,7 @@ import {
   not,
   or,
   upper,
-} from "../../../src/query2/query-builder/functions.js"
+} from "../../src/query2/query-builder/functions.js"
 
 // Sample data types for comprehensive testing
 type Employee = {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest"
-import { createLiveQueryCollection } from "../../../src/query2/index.js"
-import { createCollection } from "../../../src/collection.js"
-import { mockSyncCollectionOptions } from "../../utls.js"
+import { createLiveQueryCollection } from "../../src/query2/index.js"
+import { createCollection } from "../../src/collection.js"
+import { mockSyncCollectionOptions } from "../utls.js"
 import {
   and,
   avg,
@@ -14,7 +14,7 @@ import {
   min,
   or,
   sum,
-} from "../../../src/query2/query-builder/functions.js"
+} from "../../src/query2/query-builder/functions.js"
 
 // Sample data types for comprehensive GROUP BY testing
 type Order = {
@@ -145,8 +145,6 @@ describe(`Query GROUP BY Execution`, () => {
       })
 
       expect(customerSummary.size).toBe(3) // 3 customers
-
-      console.log(customerSummary.state)
 
       // Customer 1: orders 1, 2, 7 (amounts: 100, 200, 400)
       const customer1 = customerSummary.get(1)
