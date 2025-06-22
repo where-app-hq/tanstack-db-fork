@@ -32,7 +32,7 @@ const departmentsCollection = new CollectionImpl<Department>({
 })
 
 describe(`QueryBuilder.join`, () => {
-  it(`adds a simple inner join`, () => {
+  it(`adds a simple default (left) join`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder
       .from({ employees: employeesCollection })
@@ -47,7 +47,7 @@ describe(`QueryBuilder.join`, () => {
     expect(builtQuery.join).toHaveLength(1)
 
     const join = builtQuery.join![0]!
-    expect(join.type).toBe(`inner`)
+    expect(join.type).toBe(`left`)
     expect(join.from.type).toBe(`collectionRef`)
     if (join.from.type === `collectionRef`) {
       expect(join.from.alias).toBe(`departments`)
