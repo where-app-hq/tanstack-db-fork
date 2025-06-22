@@ -104,10 +104,10 @@ useLiveQuery((q) =>
 // Args = ref, val, func
 
 // Aggregate functions
-{ 
+{
   type: 'agg',
   name: 'count',
-  args: [ { type: 'ref', path: ['comments', 'id'] } ] 
+  args: [ { type: 'ref', path: ['comments', 'id'] } ]
 }
 
 ```
@@ -169,7 +169,7 @@ const { allAggregate, byStatusAggregate, firstTenIssues } = useLiveQuery((q) => 
       count: count(issue.id),
       avgDuration: avg(issue.duration)
     }))
-  
+
   const activeUsers = q
     .from({ user: usersCollection })
     .where(({ user }) => eq(user.status, 'active'))
@@ -208,9 +208,9 @@ would result in this intermediate representation:
       type: "queryRef",
       alias: "issue",
       value: {
-        from: { 
-          type: "collectionRef", 
-          collection: IssuesCollection, 
+        from: {
+          type: "collectionRef",
+          collection: IssuesCollection,
           alias: "issue"
         },
         where: {
@@ -224,7 +224,7 @@ would result in this intermediate representation:
       },
     },
     select: {
-      count: { 
+      count: {
         type: "agg",
         name: "count",
         args: [{ type: "ref", path: ["issue", "id"] }],
@@ -239,7 +239,7 @@ would result in this intermediate representation:
     },
     groupBy: [{ type: "ref", path: ["issue", "status"] }],
     select: {
-      count: { 
+      count: {
         type: "agg",
         name: "count",
         args: [{ type: "ref", path: ["issue", "id"] }],
@@ -254,14 +254,14 @@ would result in this intermediate representation:
     },
     join: [
       {
-        from: { 
+        from: {
           type: "queryRef",
           alias: "user",
           query: {
-            from: { 
-              type: "collectionRef", 
-              collection: UsersCollection, 
-              alias: "user" 
+            from: {
+              type: "collectionRef",
+              collection: UsersCollection,
+              alias: "user"
             },
             where: {
               type: "func",
@@ -335,7 +335,6 @@ There should be a generic context that is passed down through all the methods to
 
 `orderBy` takes a callback, which is passed a `RefProxy` object. The callback should return an expression that is evaluated to a value for each row in the query, and the rows are sorted by the value.
 
-
 # Example queries:
 
 ## 1. Simple filtering with multiple conditions
@@ -344,16 +343,18 @@ There should be a generic context that is passed down through all the methods to
 const activeUsers = useLiveQuery((q) =>
   q
     .from({ user: usersCollection })
-    .where(({ user }) => and(
-      eq(user.status, 'active'),
-      gt(user.lastLoginAt, new Date('2024-01-01'))
-    ))
+    .where(({ user }) =>
+      and(
+        eq(user.status, "active"),
+        gt(user.lastLoginAt, new Date("2024-01-01"))
+      )
+    )
     .select(({ user }) => ({
       id: user.id,
       name: user.name,
       email: user.email,
     }))
-);
+)
 ```
 
 ## 2. Using string functions and LIKE operator
@@ -362,35 +363,36 @@ const activeUsers = useLiveQuery((q) =>
 const searchUsers = useLiveQuery((q) =>
   q
     .from({ user: usersCollection })
-    .where(({ user }) => or(
-      like(lower(user.name), '%john%'),
-      like(lower(user.email), '%john%')
-    ))
+    .where(({ user }) =>
+      or(like(lower(user.name), "%john%"), like(lower(user.email), "%john%"))
+    )
     .select(({ user }) => ({
       id: user.id,
       displayName: upper(user.name),
       emailLength: length(user.email),
     }))
-);
+)
 ```
 
 ## 3. Pagination with limit and offset
 
 ```js
-const paginatedPosts = useLiveQuery((q) =>
-  q
-    .from({ post: postsCollection })
-    .where(({ post }) => eq(post.published, true))
-    .orderBy(({ post }) => post.createdAt, 'desc')
-    .limit(10)
-    .offset(page * 10)
-    .select(({ post }) => ({
-      id: post.id,
-      title: post.title,
-      excerpt: post.excerpt,
-      publishedAt: post.publishedAt,
-    }))
-, [page]);
+const paginatedPosts = useLiveQuery(
+  (q) =>
+    q
+      .from({ post: postsCollection })
+      .where(({ post }) => eq(post.published, true))
+      .orderBy(({ post }) => post.createdAt, "desc")
+      .limit(10)
+      .offset(page * 10)
+      .select(({ post }) => ({
+        id: post.id,
+        title: post.title,
+        excerpt: post.excerpt,
+        publishedAt: post.publishedAt,
+      })),
+  [page]
+)
 ```
 
 ## 4. Complex aggregation with HAVING clause
@@ -399,9 +401,8 @@ const paginatedPosts = useLiveQuery((q) =>
 const popularCategories = useLiveQuery((q) =>
   q
     .from({ post: postsCollection })
-    .join(
-      { category: categoriesCollection },
-      ({ post, category }) => eq(post.categoryId, category.id)
+    .join({ category: categoriesCollection }, ({ post, category }) =>
+      eq(post.categoryId, category.id)
     )
     .groupBy(({ category }) => category.name)
     .having(({ post }) => gt(count(post.id), 5))
@@ -411,8 +412,8 @@ const popularCategories = useLiveQuery((q) =>
       avgViews: avg(post.views),
       totalViews: sum(post.views),
     }))
-    .orderBy(({ post }) => count(post.id), 'desc')
-);
+    .orderBy(({ post }) => count(post.id), "desc")
+)
 ```
 
 ## 5. Using IN operator with array
@@ -437,42 +438,40 @@ const specificStatuses = useLiveQuery((q) =>
 ## 6. Multiple joins with different collections
 
 ```js
-const orderDetails = useLiveQuery((q) =>
-  q
-    .from({ order: ordersCollection })
-    .join(
-      { customer: customersCollection },
-      ({ order, customer }) => eq(order.customerId, customer.id)
-    )
-    .join(
-      { product: productsCollection },
-      ({ order, product }) => eq(order.productId, product.id)
-    )
-    .where(({ order }) => gte(order.createdAt, startDate))
-    .select(({ order, customer, product }) => ({
-      orderId: order.id,
-      customerName: customer.name,
-      productName: product.name,
-      total: order.total,
-      orderDate: order.createdAt,
-    }))
-    .orderBy(({ order }) => order.createdAt, 'desc')
-, [startDate]);
+const orderDetails = useLiveQuery(
+  (q) =>
+    q
+      .from({ order: ordersCollection })
+      .join({ customer: customersCollection }, ({ order, customer }) =>
+        eq(order.customerId, customer.id)
+      )
+      .join({ product: productsCollection }, ({ order, product }) =>
+        eq(order.productId, product.id)
+      )
+      .where(({ order }) => gte(order.createdAt, startDate))
+      .select(({ order, customer, product }) => ({
+        orderId: order.id,
+        customerName: customer.name,
+        productName: product.name,
+        total: order.total,
+        orderDate: order.createdAt,
+      }))
+      .orderBy(({ order }) => order.createdAt, "desc"),
+  [startDate]
+)
 ```
 
 ## 7. Using COALESCE and string concatenation
 
 ```js
 const userProfiles = useLiveQuery((q) =>
-  q
-    .from({ user: usersCollection })
-    .select(({ user }) => ({
-      id: user.id,
-      fullName: concat([user.firstName, ' ', user.lastName]),
-      displayName: coalesce([user.nickname, user.firstName, 'Anonymous']),
-      bio: coalesce([user.bio, 'No bio available']),
-    }))
-);
+  q.from({ user: usersCollection }).select(({ user }) => ({
+    id: user.id,
+    fullName: concat([user.firstName, " ", user.lastName]),
+    displayName: coalesce([user.nickname, user.firstName, "Anonymous"]),
+    bio: coalesce([user.bio, "No bio available"]),
+  }))
+)
 ```
 
 ## 8. Nested conditions with NOT operator
@@ -481,64 +480,67 @@ const userProfiles = useLiveQuery((q) =>
 const excludedPosts = useLiveQuery((q) =>
   q
     .from({ post: postsCollection })
-    .where(({ post }) => and(
-      eq(post.published, true),
-      not(or(
-        eq(post.categoryId, 1),
-        like(post.title, '%draft%')
-      ))
-    ))
+    .where(({ post }) =>
+      and(
+        eq(post.published, true),
+        not(or(eq(post.categoryId, 1), like(post.title, "%draft%")))
+      )
+    )
     .select(({ post }) => ({
       id: post.id,
       title: post.title,
       categoryId: post.categoryId,
     }))
-);
+)
 ```
 
 ## 9. Time-based analytics with date comparisons
 
 ```js
-const monthlyStats = useLiveQuery((q) =>
-  q
-    .from({ event: eventsCollection })
-    .where(({ event }) => and(
-      gte(event.createdAt, startOfMonth),
-      lt(event.createdAt, endOfMonth)
-    ))
-    .groupBy(({ event }) => event.type)
-    .select(({ event }) => ({
-      eventType: event.type,
-      count: count(event.id),
-      firstEvent: min(event.createdAt),
-      lastEvent: max(event.createdAt),
-    }))
-, [startOfMonth, endOfMonth]);
+const monthlyStats = useLiveQuery(
+  (q) =>
+    q
+      .from({ event: eventsCollection })
+      .where(({ event }) =>
+        and(gte(event.createdAt, startOfMonth), lt(event.createdAt, endOfMonth))
+      )
+      .groupBy(({ event }) => event.type)
+      .select(({ event }) => ({
+        eventType: event.type,
+        count: count(event.id),
+        firstEvent: min(event.createdAt),
+        lastEvent: max(event.createdAt),
+      })),
+  [startOfMonth, endOfMonth]
+)
 ```
 
 ## 10. Case-insensitive search with multiple fields
 
 ```js
-const searchResults = useLiveQuery((q) =>
-  q
-    .from({ article: articlesCollection })
-    .join(
-      { author: authorsCollection },
-      ({ article, author }) => eq(article.authorId, author.id)
-    )
-    .where(({ article, author }) => or(
-      ilike(article.title, `%${searchTerm}%`),
-      ilike(article.content, `%${searchTerm}%`),
-      ilike(author.name, `%${searchTerm}%`)
-    ))
-    .select(({ article, author }) => ({
-      id: article.id,
-      title: article.title,
-      authorName: author.name,
-      snippet: article.content, // Would be truncated in real implementation
-      relevanceScore: add(length(article.title), length(article.content)),
-    }))
-    .orderBy(({ article }) => article.updatedAt, 'desc')
-    .limit(20)
-, [searchTerm]);
+const searchResults = useLiveQuery(
+  (q) =>
+    q
+      .from({ article: articlesCollection })
+      .join({ author: authorsCollection }, ({ article, author }) =>
+        eq(article.authorId, author.id)
+      )
+      .where(({ article, author }) =>
+        or(
+          ilike(article.title, `%${searchTerm}%`),
+          ilike(article.content, `%${searchTerm}%`),
+          ilike(author.name, `%${searchTerm}%`)
+        )
+      )
+      .select(({ article, author }) => ({
+        id: article.id,
+        title: article.title,
+        authorName: author.name,
+        snippet: article.content, // Would be truncated in real implementation
+        relevanceScore: add(length(article.title), length(article.content)),
+      }))
+      .orderBy(({ article }) => article.updatedAt, "desc")
+      .limit(20),
+  [searchTerm]
+)
 ```

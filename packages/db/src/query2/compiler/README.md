@@ -7,12 +7,14 @@ This directory contains the new compiler for the query2 system that translates t
 The compiler consists of several modules:
 
 ### Core Compiler (`index.ts`)
+
 - Main entry point with `compileQuery()` function
 - Orchestrates the compilation process
 - Handles FROM clause processing (collections and sub-queries)
 - Coordinates all pipeline stages
 
 ### Expression Evaluator (`evaluators.ts`)
+
 - Evaluates expressions against namespaced row data
 - Supports all expression types: refs, values, functions, aggregates
 - Implements comparison operators: `eq`, `gt`, `gte`, `lt`, `lte`
@@ -23,6 +25,7 @@ The compiler consists of several modules:
 - Implements array operations: `in`
 
 ### Pipeline Processors
+
 - **Joins (`joins.ts`)**: Handles all join types (inner, left, right, full, cross)
 - **Order By (`order-by.ts`)**: Implements sorting with multiple columns and directions
 - **Group By (`group-by.ts`)**: Basic grouping support (simplified implementation)
@@ -31,36 +34,43 @@ The compiler consists of several modules:
 ## Features Implemented
 
 ### ✅ Basic Query Operations
+
 - FROM clause with collections and sub-queries
 - SELECT clause with expression evaluation
 - WHERE clause with complex filtering
 - ORDER BY with multiple columns and directions
 
 ### ✅ Expression System
+
 - Reference expressions (`ref`)
 - Literal values (`val`)
 - Function calls (`func`)
 - Comprehensive operator support
 
 ### ✅ String Operations
-- LIKE/ILIKE pattern matching with SQL wildcards (% and _)
+
+- LIKE/ILIKE pattern matching with SQL wildcards (% and \_)
 - String functions (upper, lower, length, concat, coalesce)
 
 ### ✅ Boolean Logic
+
 - AND, OR, NOT operations
 - Complex nested conditions
 
 ### ✅ Comparison Operations
+
 - All standard comparison operators
 - Proper null handling
 - Type-aware comparisons
 
 ### ⚠️ Partial Implementation
+
 - **GROUP BY**: Basic structure in place, needs full aggregation logic
 - **Aggregate Functions**: Placeholder implementation for single-row operations
 - **HAVING**: Basic filtering support
 
 ### ❌ Not Yet Implemented
+
 - **LIMIT/OFFSET**: Structure in place but not implemented
 - **WITH (CTEs)**: Not implemented
 - **Complex Aggregations**: Needs integration with GROUP BY
@@ -102,4 +112,4 @@ All tests are passing (81/81) with good coverage of the implemented features.
 3. **WITH clause support** for CTEs
 4. **Performance optimizations** for complex queries
 5. **Better error handling** with detailed error messages
-6. **Query plan optimization** for better performance 
+6. **Query plan optimization** for better performance
