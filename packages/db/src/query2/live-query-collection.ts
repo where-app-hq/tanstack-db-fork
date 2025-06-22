@@ -108,7 +108,7 @@ export interface LiveQueryCollectionConfig<
  */
 export function liveQueryCollectionOptions<
   TContext extends Context,
-  TResult extends object = GetResult<TContext> & object,
+  TResult extends object = GetResult<TContext>,
   TUtils extends UtilsRecord = {},
 >(
   config: LiveQueryCollectionConfig<TContext, TResult>

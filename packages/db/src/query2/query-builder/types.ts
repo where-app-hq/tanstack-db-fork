@@ -7,6 +7,8 @@ export interface Context {
   baseSchema: Record<string, any>
   // The current schema available (includes joined collections)
   schema: Record<string, any>
+  // the name of the source that was used in the from clause
+  fromSourceName: string
   // Whether this query has joins
   hasJoins?: boolean
   // The result type after select (if select has been called)
@@ -22,7 +24,7 @@ export type InferCollectionType<T> =
   T extends CollectionImpl<infer U> ? U : never
 
 // Helper type to create schema from source
-export type SchemaFromSource<T extends Source> = {
+export type SchemaFromSource<T extends Source> = Prettify<{
   [K in keyof T]: T[K] extends CollectionImpl<infer U>
     ? U
     : T[K] extends QueryBuilder<infer C>
@@ -32,7 +34,7 @@ export type SchemaFromSource<T extends Source> = {
           ? S
           : never
       : never
-}
+}>
 
 // Helper type to get all aliases from a context
 export type GetAliases<TContext extends Context> = keyof TContext[`schema`]
@@ -113,25 +115,25 @@ export type MergeContext<
 > = {
   baseSchema: TContext[`baseSchema`]
   schema: TContext[`schema`] & TNewSchema
+  fromSourceName: TContext[`fromSourceName`]
   hasJoins: true
   result: TContext[`result`]
 }
 
 // Helper type for updating context with result type
-export type WithResult<TContext extends Context, TResult> = Omit<
-  TContext,
-  `result`
-> & {
-  result: TResult
-}
+export type WithResult<TContext extends Context, TResult> = Prettify<
+  Omit<TContext, `result`> & {
+    result: Prettify<TResult>
+  }
+>
 
 // Helper type to get the result type from a context
 export type GetResult<TContext extends Context> = Prettify<
-  TContext[`result`] extends undefined
-    ? TContext[`hasJoins`] extends true
+  TContext[`result`] extends object
+    ? TContext[`result`]
+    : TContext[`hasJoins`] extends true
       ? TContext[`schema`]
-      : TContext[`schema`]
-    : TContext[`result`]
+      : TContext[`schema`][TContext[`fromSourceName`]]
 >
 
 // Helper type to simplify complex types for better editor hints

@@ -46,6 +46,7 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
   ): QueryBuilder<{
     baseSchema: SchemaFromSource<TSource>
     schema: SchemaFromSource<TSource>
+    fromSourceName: keyof TSource & string
     hasJoins: false
   }> {
     if (Object.keys(source).length !== 1) {
