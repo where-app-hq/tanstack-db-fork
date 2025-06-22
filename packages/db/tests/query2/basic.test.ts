@@ -500,5 +500,158 @@ describe(`Query`, () => {
       expect(results1).toHaveLength(4) // All users
       expect(results2).toHaveLength(3) // Only active users
     })
+
+    test(`should return original collection type when no select is provided`, () => {
+      const liveCollection = createLiveQueryCollection({
+        query: (q) => q.from({ user: usersCollection }),
+      })
+
+      const results = liveCollection.toArray
+      // Should return the original User type, not namespaced
+      expectTypeOf(results).toEqualTypeOf<Array<User>>()
+
+      expect(results).toHaveLength(4)
+      expect(results[0]).toHaveProperty(`id`)
+      expect(results[0]).toHaveProperty(`name`)
+      expect(results[0]).toHaveProperty(`age`)
+      expect(results[0]).toHaveProperty(`email`)
+      expect(results[0]).toHaveProperty(`active`)
+
+      // Verify the data matches exactly
+      expect(results).toEqual(expect.arrayContaining(sampleUsers))
+
+      // Insert a new user
+      const newUser = {
+        id: 5,
+        name: `Eve`,
+        age: 28,
+        email: `eve@example.com`,
+        active: true,
+      }
+      usersCollection.utils.begin()
+      usersCollection.utils.write({
+        type: `insert`,
+        value: newUser,
+      })
+      usersCollection.utils.commit()
+
+      expect(liveCollection.size).toBe(5)
+      expect(liveCollection.get(5)).toEqual(newUser)
+
+      // Update the new user
+      const updatedUser = { ...newUser, name: `Eve Updated` }
+      usersCollection.utils.begin()
+      usersCollection.utils.write({
+        type: `update`,
+        value: updatedUser,
+      })
+      usersCollection.utils.commit()
+
+      expect(liveCollection.size).toBe(5)
+      expect(liveCollection.get(5)).toEqual(updatedUser)
+
+      // Delete the new user
+      usersCollection.utils.begin()
+      usersCollection.utils.write({
+        type: `delete`,
+        value: updatedUser,
+      })
+      usersCollection.utils.commit()
+
+      expect(liveCollection.size).toBe(4)
+      expect(liveCollection.get(5)).toBeUndefined()
+    })
+
+    test(`should return original collection type when no select is provided with WHERE clause`, () => {
+      const activeLiveCollection = createLiveQueryCollection({
+        query: (q) =>
+          q
+            .from({ user: usersCollection })
+            .where(({ user }) => eq(user.active, true)),
+      })
+
+      const results = activeLiveCollection.toArray
+      // Should return the original User type, not namespaced
+      expectTypeOf(results).toEqualTypeOf<Array<User>>()
+
+      expect(results).toHaveLength(3)
+      expect(results.every((u) => u.active)).toBe(true)
+
+      // All properties should be present
+      results.forEach((result) => {
+        expect(result).toHaveProperty(`id`)
+        expect(result).toHaveProperty(`name`)
+        expect(result).toHaveProperty(`age`)
+        expect(result).toHaveProperty(`email`)
+        expect(result).toHaveProperty(`active`)
+      })
+
+      expect(results.map((u) => u.name)).toEqual(
+        expect.arrayContaining([`Alice`, `Bob`, `Dave`])
+      )
+
+      // Insert a new active user
+      const newUser = {
+        id: 5,
+        name: `Eve`,
+        age: 28,
+        email: `eve@example.com`,
+        active: true,
+      }
+      usersCollection.utils.begin()
+      usersCollection.utils.write({
+        type: `insert`,
+        value: newUser,
+      })
+      usersCollection.utils.commit()
+
+      expect(activeLiveCollection.size).toBe(4) // Should include the new active user
+      expect(activeLiveCollection.get(5)).toEqual(newUser)
+
+      // Update the new user to inactive (should remove from active collection)
+      const inactiveUser = { ...newUser, active: false }
+      usersCollection.utils.begin()
+      usersCollection.utils.write({
+        type: `update`,
+        value: inactiveUser,
+      })
+      usersCollection.utils.commit()
+
+      expect(activeLiveCollection.size).toBe(3) // Should exclude the now inactive user
+      expect(activeLiveCollection.get(5)).toBeUndefined()
+
+      // Delete from original collection to clean up
+      usersCollection.utils.begin()
+      usersCollection.utils.write({
+        type: `delete`,
+        value: inactiveUser,
+      })
+      usersCollection.utils.commit()
+    })
+
+    test(`should return original collection type with query function syntax and no select`, () => {
+      const liveCollection = createLiveQueryCollection((q) =>
+        q.from({ user: usersCollection }).where(({ user }) => gt(user.age, 20))
+      )
+
+      const results = liveCollection.toArray
+      // Should return the original User type, not namespaced
+      expectTypeOf(results).toEqualTypeOf<Array<User>>()
+
+      expect(results).toHaveLength(3) // Alice (25), Charlie (30), Dave (22)
+
+      // All properties should be present
+      results.forEach((result) => {
+        expect(result).toHaveProperty(`id`)
+        expect(result).toHaveProperty(`name`)
+        expect(result).toHaveProperty(`age`)
+        expect(result).toHaveProperty(`email`)
+        expect(result).toHaveProperty(`active`)
+      })
+
+      expect(results.map((u) => u.name)).toEqual(
+        expect.arrayContaining([`Alice`, `Charlie`, `Dave`])
+      )
+    })
   })
 })
