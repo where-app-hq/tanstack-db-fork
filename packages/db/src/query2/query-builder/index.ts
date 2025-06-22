@@ -188,14 +188,12 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
       if (isRefProxy(value)) {
         select[key] = toExpression(value)
       } else if (
-        value &&
         typeof value === `object` &&
         `type` in value &&
         value.type === `agg`
       ) {
         select[key] = value
       } else if (
-        value &&
         typeof value === `object` &&
         `type` in value &&
         value.type === `func`
