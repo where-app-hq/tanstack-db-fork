@@ -1,10 +1,11 @@
 {
   "name": "@tanstack/db-collections",
   "description": "A collection for (aspirationally) every way of loading your data",
-  "version": "0.0.13",
+  "version": "0.0.15",
   "dependencies": {
     "@tanstack/db": "workspace:*",
     "@tanstack/query-core": "^5.75.7",
+    "@standard-schema/spec": "^1.0.0",
     "@tanstack/store": "^0.7.0"
   },
   "devDependencies": {
