@@ -129,15 +129,21 @@ describe(`Query Builder Callback Types`, () => {
           .select(({ user, dept }) => {
             // Test that both user and dept are available with correct types
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
 
             // Test cross-table property access
             expectTypeOf(user.department_id).toEqualTypeOf<
               RefProxy<number | null>
             >()
-            expectTypeOf(dept.id).toEqualTypeOf<RefProxy<number>>()
-            expectTypeOf(dept.name).toEqualTypeOf<RefProxy<string>>()
-            expectTypeOf(dept.budget).toEqualTypeOf<RefProxy<number>>()
+            expectTypeOf(dept.id).toEqualTypeOf<RefProxy<number | undefined>>()
+            expectTypeOf(dept.name).toEqualTypeOf<
+              RefProxy<string | undefined>
+            >()
+            expectTypeOf(dept.budget).toEqualTypeOf<
+              RefProxy<number | undefined>
+            >()
 
             return {
               user_name: user.name,
@@ -290,7 +296,9 @@ describe(`Query Builder Callback Types`, () => {
           .where(({ user, dept }) => {
             // Test that both user and dept are available with correct types
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
 
             return and(
               eq(user.active, true),
@@ -310,13 +318,15 @@ describe(`Query Builder Callback Types`, () => {
           .join({ dept: departmentsCollection }, ({ user, dept }) => {
             // Test that both tables are available with correct types
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
 
             // Test property access for join conditions
             expectTypeOf(user.department_id).toEqualTypeOf<
               RefProxy<number | null>
             >()
-            expectTypeOf(dept.id).toEqualTypeOf<RefProxy<number>>()
+            expectTypeOf(dept.id).toEqualTypeOf<RefProxy<number | undefined>>()
 
             return eq(user.department_id, dept.id)
           })
@@ -348,8 +358,12 @@ describe(`Query Builder Callback Types`, () => {
           .join({ project: projectsCollection }, ({ user, dept, project }) => {
             // Test that all three tables are available
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
-            expectTypeOf(project).toEqualTypeOf<RefProxyFor<Project>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
+            expectTypeOf(project).toEqualTypeOf<
+              RefProxyFor<Project | undefined>
+            >()
 
             return and(
               eq(project.user_id, user.id),
@@ -401,7 +415,9 @@ describe(`Query Builder Callback Types`, () => {
           .orderBy(({ user, dept }) => {
             // Test that both tables are available in orderBy
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
 
             return dept.name
           })
@@ -449,7 +465,9 @@ describe(`Query Builder Callback Types`, () => {
           .groupBy(({ user, dept }) => {
             // Test that both tables are available in groupBy
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
 
             return dept.location
           })
@@ -533,7 +551,9 @@ describe(`Query Builder Callback Types`, () => {
           .having(({ user, dept }) => {
             // Test that both tables are available in having
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
 
             return and(gt(count(user.id), 3), gt(avg(user.salary), 70000))
           })
@@ -549,21 +569,31 @@ describe(`Query Builder Callback Types`, () => {
           .join({ dept: departmentsCollection }, ({ user, dept }) => {
             // JOIN callback
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
             return eq(user.department_id, dept.id)
           })
           .join({ project: projectsCollection }, ({ user, dept, project }) => {
             // Second JOIN callback
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
-            expectTypeOf(project).toEqualTypeOf<RefProxyFor<Project>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
+            expectTypeOf(project).toEqualTypeOf<
+              RefProxyFor<Project | undefined>
+            >()
             return eq(project.user_id, user.id)
           })
           .where(({ user, dept, project }) => {
             // WHERE callback
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
-            expectTypeOf(project).toEqualTypeOf<RefProxyFor<Project>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
+            expectTypeOf(project).toEqualTypeOf<
+              RefProxyFor<Project | undefined>
+            >()
             return and(
               eq(user.active, true),
               eq(dept.active, true),
@@ -572,20 +602,28 @@ describe(`Query Builder Callback Types`, () => {
           })
           .groupBy(({ dept }) => {
             // GROUP BY callback
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
             return dept.location
           })
           .having(({ user, project }) => {
             // HAVING callback
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(project).toEqualTypeOf<RefProxyFor<Project>>()
+            expectTypeOf(project).toEqualTypeOf<
+              RefProxyFor<Project | undefined>
+            >()
             return and(gt(count(user.id), 2), gt(avg(project.budget), 50000))
           })
           .select(({ user, dept, project }) => {
             // SELECT callback
             expectTypeOf(user).toEqualTypeOf<RefProxyFor<User>>()
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
-            expectTypeOf(project).toEqualTypeOf<RefProxyFor<Project>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
+            expectTypeOf(project).toEqualTypeOf<
+              RefProxyFor<Project | undefined>
+            >()
             return {
               location: dept.location,
               user_count: count(user.id),
@@ -596,7 +634,9 @@ describe(`Query Builder Callback Types`, () => {
           })
           .orderBy(({ dept }) => {
             // ORDER BY callback
-            expectTypeOf(dept).toEqualTypeOf<RefProxyFor<Department>>()
+            expectTypeOf(dept).toEqualTypeOf<
+              RefProxyFor<Department | undefined>
+            >()
             return dept.location
           })
       )

@@ -218,8 +218,8 @@ describe(`Join Types - Type Safety`, () => {
     expectTypeOf(results).toEqualTypeOf<
       Array<{
         userName: string
-        deptName: string
-        deptBudget: number
+        deptName: string | undefined
+        deptBudget: number | undefined
       }>
     >()
   })

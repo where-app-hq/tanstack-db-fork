@@ -7,7 +7,7 @@ import { mockSyncCollectionOptions } from "../utls.js"
 type Issue = {
   id: number
   title: string
-  status: 'open' | 'in_progress' | 'closed'
+  status: `open` | `in_progress` | `closed`
   projectId: number
   userId: number
   duration: number
@@ -16,11 +16,51 @@ type Issue = {
 
 // Sample data
 const sampleIssues: Array<Issue> = [
-  { id: 1, title: "Bug 1", status: "open", projectId: 1, userId: 1, duration: 5, createdAt: "2024-01-01" },
-  { id: 2, title: "Bug 2", status: "in_progress", projectId: 1, userId: 2, duration: 8, createdAt: "2024-01-02" },
-  { id: 3, title: "Feature 1", status: "closed", projectId: 1, userId: 1, duration: 12, createdAt: "2024-01-03" },
-  { id: 4, title: "Bug 3", status: "open", projectId: 2, userId: 3, duration: 3, createdAt: "2024-01-04" },
-  { id: 5, title: "Feature 2", status: "in_progress", projectId: 1, userId: 2, duration: 15, createdAt: "2024-01-05" },
+  {
+    id: 1,
+    title: `Bug 1`,
+    status: `open`,
+    projectId: 1,
+    userId: 1,
+    duration: 5,
+    createdAt: `2024-01-01`,
+  },
+  {
+    id: 2,
+    title: `Bug 2`,
+    status: `in_progress`,
+    projectId: 1,
+    userId: 2,
+    duration: 8,
+    createdAt: `2024-01-02`,
+  },
+  {
+    id: 3,
+    title: `Feature 1`,
+    status: `closed`,
+    projectId: 1,
+    userId: 1,
+    duration: 12,
+    createdAt: `2024-01-03`,
+  },
+  {
+    id: 4,
+    title: `Bug 3`,
+    status: `open`,
+    projectId: 2,
+    userId: 3,
+    duration: 3,
+    createdAt: `2024-01-04`,
+  },
+  {
+    id: 5,
+    title: `Feature 2`,
+    status: `in_progress`,
+    projectId: 1,
+    userId: 2,
+    duration: 15,
+    createdAt: `2024-01-05`,
+  },
 ]
 
 function createIssuesCollection() {
@@ -63,7 +103,7 @@ describe(`Subquery`, () => {
 
       expect(results.map((r) => r.id).sort()).toEqual([1, 2, 3, 5])
       expect(results.map((r) => r.title)).toEqual(
-        expect.arrayContaining(["Bug 1", "Bug 2", "Feature 1", "Feature 2"])
+        expect.arrayContaining([`Bug 1`, `Bug 2`, `Feature 1`, `Feature 2`])
       )
     })
 
@@ -71,22 +111,24 @@ describe(`Subquery`, () => {
       const liveCollection = createLiveQueryCollection((q) => {
         const openIssues = q
           .from({ issue: issuesCollection })
-          .where(({ issue }) => eq(issue.status, "open"))
+          .where(({ issue }) => eq(issue.status, `open`))
 
-        return q
-          .from({ openIssue: openIssues })
-          .select(({ openIssue }) => ({
-            id: openIssue.id,
-            title: openIssue.title,
-            projectId: openIssue.projectId,
-          }))
+        return q.from({ openIssue: openIssues }).select(({ openIssue }) => ({
+          id: openIssue.id,
+          title: openIssue.title,
+          projectId: openIssue.projectId,
+        }))
       })
 
       const results = liveCollection.toArray
       expect(results).toHaveLength(2) // Issues 1 and 4 are open
 
       expect(results.map((r) => r.id).sort()).toEqual([1, 4])
-      expect(results.every((r) => sampleIssues.find(i => i.id === r.id)?.status === "open")).toBe(true)
+      expect(
+        results.every(
+          (r) => sampleIssues.find((i) => i.id === r.id)?.status === `open`
+        )
+      ).toBe(true)
     })
 
     test(`should return original collection type when subquery has no select`, () => {
@@ -126,13 +168,11 @@ describe(`Subquery`, () => {
             .from({ issue: issuesCollection })
             .where(({ issue }) => gt(issue.duration, 5))
 
-          return q
-            .from({ issue: highDurationIssues })
-            .select(({ issue }) => ({
-              issueId: issue.id,
-              issueTitle: issue.title,
-              durationHours: issue.duration,
-            }))
+          return q.from({ issue: highDurationIssues }).select(({ issue }) => ({
+            issueId: issue.id,
+            issueTitle: issue.title,
+            durationHours: issue.duration,
+          }))
         },
         getKey: (item) => item.issueId,
       })
@@ -143,7 +183,7 @@ describe(`Subquery`, () => {
       // Verify we can get items by their custom key
       expect(customKeyCollection.get(2)).toMatchObject({
         issueId: 2,
-        issueTitle: "Bug 2",
+        issueTitle: `Bug 2`,
         durationHours: 8,
       })
     })
@@ -153,7 +193,7 @@ describe(`Subquery`, () => {
         query: (q) => {
           const openIssues = q
             .from({ issue: issuesCollection })
-            .where(({ issue }) => eq(issue.status, "open"))
+            .where(({ issue }) => eq(issue.status, `open`))
 
           return q.from({ issue: openIssues })
         },
@@ -163,7 +203,7 @@ describe(`Subquery`, () => {
         query: (q) => {
           const closedIssues = q
             .from({ issue: issuesCollection })
-            .where(({ issue }) => eq(issue.status, "closed"))
+            .where(({ issue }) => eq(issue.status, `closed`))
 
           return q.from({ issue: closedIssues })
         },
@@ -221,9 +261,9 @@ describe(`Subquery`, () => {
 
       const sortedResults = results.sort((a, b) => a.key - b.key)
       expect(sortedResults).toEqual([
-        { key: 3, title: "Feature 1", hours: 12, type: "closed" },
-        { key: 5, title: "Feature 2", hours: 15, type: "in_progress" },
+        { key: 3, title: `Feature 1`, hours: 12, type: `closed` },
+        { key: 5, title: `Feature 2`, hours: 15, type: `in_progress` },
       ])
     })
   })
-}) 
+})

@@ -56,16 +56,16 @@ export type SelectObject<
 // Helper type to get the result type from a select object
 export type ResultTypeFromSelect<TSelectObject> = {
   [K in keyof TSelectObject]: TSelectObject[K] extends RefProxy<infer T>
-    ? T
+    ? // For RefProxy, preserve the type as-is (including optionality from joins)
+      T
     : TSelectObject[K] extends Expression<infer T>
       ? T
       : TSelectObject[K] extends Agg<infer T>
         ? T
-        : TSelectObject[K] extends RefProxy<infer T>
-          ? T
-          : TSelectObject[K] extends RefProxyFor<infer T>
-            ? T
-            : never
+        : TSelectObject[K] extends RefProxyFor<infer T>
+          ? // For RefProxyFor, preserve the type as-is (including optionality from joins)
+            T
+          : never
 }
 
 // Callback type for orderBy clauses
@@ -88,13 +88,42 @@ export type RefProxyForContext<TContext extends Context> = {
   [K in keyof TContext[`schema`]]: RefProxyFor<TContext[`schema`][K]>
 }
 
-// Helper type to create RefProxy for a specific type
+// Helper type to check if T is exactly undefined
+type IsExactlyUndefined<T> = [T] extends [undefined] ? true : false
+
+// Helper type to check if T includes undefined (is optional)
+type IsOptional<T> = undefined extends T ? true : false
+
+// Helper type to extract non-undefined type
+type NonUndefined<T> = T extends undefined ? never : T
+
+// Helper type to create RefProxy for a specific type with optionality passthrough
 export type RefProxyFor<T> = OmitRefProxy<
-  {
-    [K in keyof T]: T[K] extends Record<string, any>
-      ? RefProxyFor<T[K]> & RefProxy<T[K]>
-      : RefProxy<T[K]>
-  } & RefProxy<T>
+  IsExactlyUndefined<T> extends true
+    ? // T is exactly undefined
+      RefProxy<T>
+    : IsOptional<T> extends true
+      ? // T is optional (T | undefined) but not exactly undefined
+        NonUndefined<T> extends Record<string, any>
+        ? {
+            // Properties are accessible and their types become optional
+            [K in keyof NonUndefined<T>]: NonUndefined<T>[K] extends Record<
+              string,
+              any
+            >
+              ? RefProxyFor<NonUndefined<T>[K] | undefined> &
+                  RefProxy<NonUndefined<T>[K] | undefined>
+              : RefProxy<NonUndefined<T>[K] | undefined>
+          } & RefProxy<T>
+        : RefProxy<T>
+      : // T is not optional
+        T extends Record<string, any>
+        ? {
+            [K in keyof T]: T[K] extends Record<string, any>
+              ? RefProxyFor<T[K]> & RefProxy<T[K]>
+              : RefProxy<T[K]>
+          } & RefProxy<T>
+        : RefProxy<T>
 >
 
 type OmitRefProxy<T> = Omit<T, `__refProxy` | `__path` | `__type`>
@@ -109,18 +138,23 @@ export interface RefProxy<T = any> {
   readonly __type: T
 }
 
-// Helper type to merge contexts with join optionality (for joins)
+// Helper type to apply join optionality immediately when merging contexts
 export type MergeContextWithJoinType<
   TContext extends Context,
   TNewSchema extends Record<string, any>,
   TJoinType extends `inner` | `left` | `right` | `full` | `outer` | `cross`,
 > = {
   baseSchema: TContext[`baseSchema`]
-  // Keep original types in schema for query building (RefProxy needs non-optional types)
-  schema: TContext[`schema`] & TNewSchema
+  // Apply optionality immediately to the schema
+  schema: ApplyJoinOptionalityToMergedSchema<
+    TContext[`schema`],
+    TNewSchema,
+    TJoinType,
+    TContext[`fromSourceName`]
+  >
   fromSourceName: TContext[`fromSourceName`]
   hasJoins: true
-  // Track join types for applying optionality in GetResult
+  // Track join types for reference
   joinTypes: (TContext[`joinTypes`] extends Record<string, any>
     ? TContext[`joinTypes`]
     : {}) & {
@@ -129,19 +163,39 @@ export type MergeContextWithJoinType<
   result: TContext[`result`]
 }
 
+// Helper type to apply join optionality when merging new schema
+export type ApplyJoinOptionalityToMergedSchema<
+  TExistingSchema extends Record<string, any>,
+  TNewSchema extends Record<string, any>,
+  TJoinType extends `inner` | `left` | `right` | `full` | `outer` | `cross`,
+  TFromSourceName extends string,
+> = {
+  // Apply optionality to existing schema based on new join type
+  [K in keyof TExistingSchema]: K extends TFromSourceName
+    ? // Main table becomes optional if the new join is a right or full join
+      TJoinType extends `right` | `full`
+      ? TExistingSchema[K] | undefined
+      : TExistingSchema[K]
+    : // Other tables remain as they are (already have their optionality applied)
+      TExistingSchema[K]
+} & {
+  // Apply optionality to new schema based on join type
+  [K in keyof TNewSchema]: TJoinType extends `left` | `full`
+    ? // New table becomes optional for left and full joins
+      TNewSchema[K] | undefined
+    : // New table is required for inner and right joins
+      TNewSchema[K]
+}
+
 // Helper type to get the result type from a context
 export type GetResult<TContext extends Context> = Prettify<
   TContext[`result`] extends object
     ? TContext[`result`]
     : TContext[`hasJoins`] extends true
-      ? TContext[`joinTypes`] extends Record<string, any>
-        ? ApplyJoinOptionalityToSchema<
-            TContext[`schema`],
-            TContext[`joinTypes`],
-            TContext[`fromSourceName`]
-          >
-        : TContext[`schema`]
-      : TContext[`schema`][TContext[`fromSourceName`]]
+      ? // Optionality is already applied in the schema, just return it
+        TContext[`schema`]
+      : // Single table query - return the specific table
+        TContext[`schema`][TContext[`fromSourceName`]]
 >
 
 // Helper type to apply join optionality to the schema based on joinTypes

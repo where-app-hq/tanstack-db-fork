@@ -31,12 +31,24 @@ export function eq(
   right: string | RefProxy<string> | Expression<string>
 ): Expression<boolean>
 export function eq(
+  left: RefProxy<string | undefined>,
+  right: string | RefProxy<string | undefined> | Expression<string>
+): Expression<boolean>
+export function eq(
   left: RefProxy<number>,
   right: number | RefProxy<number> | Expression<number>
 ): Expression<boolean>
 export function eq(
+  left: RefProxy<number | undefined>,
+  right: number | RefProxy<number | undefined> | Expression<number>
+): Expression<boolean>
+export function eq(
   left: RefProxy<boolean>,
   right: boolean | RefProxy<boolean> | Expression<boolean>
+): Expression<boolean>
+export function eq(
+  left: RefProxy<boolean | undefined>,
+  right: boolean | RefProxy<boolean | undefined> | Expression<boolean>
 ): Expression<boolean>
 export function eq<T>(
   left: RefProxy<T>,
@@ -84,8 +96,16 @@ export function gt(
   right: number | RefProxy<number> | Expression<number>
 ): Expression<boolean>
 export function gt(
+  left: RefProxy<number | undefined>,
+  right: number | RefProxy<number | undefined> | Expression<number>
+): Expression<boolean>
+export function gt(
   left: RefProxy<string>,
   right: string | RefProxy<string> | Expression<string>
+): Expression<boolean>
+export function gt(
+  left: RefProxy<string | undefined>,
+  right: string | RefProxy<string | undefined> | Expression<string>
 ): Expression<boolean>
 export function gt<T extends string | number>(
   left: RefProxy<T>,
@@ -125,8 +145,16 @@ export function gte(
   right: number | RefProxy<number> | Expression<number>
 ): Expression<boolean>
 export function gte(
+  left: RefProxy<number | undefined>,
+  right: number | RefProxy<number | undefined> | Expression<number>
+): Expression<boolean>
+export function gte(
   left: RefProxy<string>,
   right: string | RefProxy<string> | Expression<string>
+): Expression<boolean>
+export function gte(
+  left: RefProxy<string | undefined>,
+  right: string | RefProxy<string | undefined> | Expression<string>
 ): Expression<boolean>
 export function gte<T extends string | number>(
   left: RefProxy<T>,
@@ -166,8 +194,16 @@ export function lt(
   right: number | RefProxy<number> | Expression<number>
 ): Expression<boolean>
 export function lt(
+  left: RefProxy<number | undefined>,
+  right: number | RefProxy<number | undefined> | Expression<number>
+): Expression<boolean>
+export function lt(
   left: RefProxy<string>,
   right: string | RefProxy<string> | Expression<string>
+): Expression<boolean>
+export function lt(
+  left: RefProxy<string | undefined>,
+  right: string | RefProxy<string | undefined> | Expression<string>
 ): Expression<boolean>
 export function lt<T extends string | number>(
   left: RefProxy<T>,
@@ -207,8 +243,16 @@ export function lte(
   right: number | RefProxy<number> | Expression<number>
 ): Expression<boolean>
 export function lte(
+  left: RefProxy<number | undefined>,
+  right: number | RefProxy<number | undefined> | Expression<number>
+): Expression<boolean>
+export function lte(
   left: RefProxy<string>,
   right: string | RefProxy<string> | Expression<string>
+): Expression<boolean>
+export function lte(
+  left: RefProxy<string | undefined>,
+  right: string | RefProxy<string | undefined> | Expression<string>
 ): Expression<boolean>
 export function lte<T extends string | number>(
   left: RefProxy<T>,
@@ -310,6 +354,10 @@ export function like<T extends RefProxy<string | null>>(
   right: string | Expression<string>
 ): Expression<boolean>
 export function like(
+  left: RefProxy<string | undefined>,
+  right: string | RefProxy<string | undefined> | Expression<string>
+): Expression<boolean>
+export function like(
   left: Expression<string>,
   right: string | Expression<string>
 ): Expression<boolean>
@@ -328,19 +376,31 @@ export function ilike<T extends RefProxy<string> | string>(
 
 export function upper(
   arg: RefProxy<string> | string | Expression<string>
-): Expression<string> {
+): Expression<string>
+export function upper(
+  arg: RefProxy<string | undefined> | string | Expression<string>
+): Expression<string>
+export function upper(arg: any): Expression<string> {
   return new Func(`upper`, [toExpression(arg)])
 }
 
 export function lower(
   arg: RefProxy<string> | string | Expression<string>
-): Expression<string> {
+): Expression<string>
+export function lower(
+  arg: RefProxy<string | undefined> | string | Expression<string>
+): Expression<string>
+export function lower(arg: any): Expression<string> {
   return new Func(`lower`, [toExpression(arg)])
 }
 
 export function length(
   arg: RefProxy<string> | string | Expression<string>
-): Expression<number> {
+): Expression<number>
+export function length(
+  arg: RefProxy<string | undefined> | string | Expression<string>
+): Expression<number>
+export function length(arg: any): Expression<number> {
   return new Func(`length`, [toExpression(arg)])
 }
 
@@ -363,6 +423,10 @@ export function add<T extends RefProxy<number> | number>(
   right: NumberLike<T>
 ): Expression<number>
 export function add(
+  left: RefProxy<number | undefined>,
+  right: number | RefProxy<number | undefined> | Expression<number>
+): Expression<number>
+export function add(
   left: Expression<number>,
   right: Expression<number> | number
 ): Expression<number>
@@ -378,24 +442,40 @@ export function count(arg: ExpressionLike): Agg<number> {
 
 export function avg(
   arg: RefProxy<number> | number | Expression<number>
-): Agg<number> {
+): Agg<number>
+export function avg(
+  arg: RefProxy<number | undefined> | number | Expression<number>
+): Agg<number>
+export function avg(arg: any): Agg<number> {
   return new Agg(`avg`, [toExpression(arg)])
 }
 
 export function sum(
   arg: RefProxy<number> | number | Expression<number>
-): Agg<number> {
+): Agg<number>
+export function sum(
+  arg: RefProxy<number | undefined> | number | Expression<number>
+): Agg<number>
+export function sum(arg: any): Agg<number> {
   return new Agg(`sum`, [toExpression(arg)])
 }
 
 export function min(
   arg: RefProxy<number> | number | Expression<number>
-): Agg<number> {
+): Agg<number>
+export function min(
+  arg: RefProxy<number | undefined> | number | Expression<number>
+): Agg<number>
+export function min(arg: any): Agg<number> {
   return new Agg(`min`, [toExpression(arg)])
 }
 
 export function max(
   arg: RefProxy<number> | number | Expression<number>
-): Agg<number> {
+): Agg<number>
+export function max(
+  arg: RefProxy<number | undefined> | number | Expression<number>
+): Agg<number>
+export function max(arg: any): Agg<number> {
   return new Agg(`max`, [toExpression(arg)])
 }
