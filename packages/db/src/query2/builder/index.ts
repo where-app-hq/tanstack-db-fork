@@ -16,6 +16,7 @@ import type {
   GroupByCallback,
   JoinOnCallback,
   MergeContext,
+  MergeContextWithJoinType,
   OrderByCallback,
   RefProxyForContext,
   ResultTypeFromSelect,
@@ -79,13 +80,18 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
   }
 
   // JOIN method
-  join<TSource extends Source>(
+  join<
+    TSource extends Source,
+    TJoinType extends `inner` | `left` | `right` | `full` = `left`,
+  >(
     source: TSource,
     onCallback: JoinOnCallback<
       MergeContext<TContext, SchemaFromSource<TSource>>
     >,
-    type: `inner` | `left` | `right` | `full` = `left`
-  ): QueryBuilder<MergeContext<TContext, SchemaFromSource<TSource>>> {
+    type: TJoinType = `left` as TJoinType
+  ): QueryBuilder<
+    MergeContextWithJoinType<TContext, SchemaFromSource<TSource>, TJoinType>
+  > {
     if (Object.keys(source).length !== 1) {
       throw new Error(`Only one source is allowed in the join clause`)
     }

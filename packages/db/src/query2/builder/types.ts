@@ -11,6 +11,11 @@ export interface Context {
   fromSourceName: string
   // Whether this query has joins
   hasJoins?: boolean
+  // Mapping of table alias to join type for easy lookup
+  joinTypes?: Record<
+    string,
+    `inner` | `left` | `right` | `full` | `outer` | `cross`
+  >
   // The result type after select (if select has been called)
   result?: any
 }
@@ -108,32 +113,100 @@ export interface RefProxy<T = any> {
   readonly __type: T
 }
 
-// Helper type to merge contexts (for joins)
-export type MergeContext<
+// Helper type to merge contexts with join optionality (for joins)
+export type MergeContextWithJoinType<
   TContext extends Context,
   TNewSchema extends Record<string, any>,
+  TJoinType extends `inner` | `left` | `right` | `full` | `outer` | `cross`,
 > = {
   baseSchema: TContext[`baseSchema`]
+  // Keep original types in schema for query building (RefProxy needs non-optional types)
   schema: TContext[`schema`] & TNewSchema
   fromSourceName: TContext[`fromSourceName`]
   hasJoins: true
+  // Track join types for applying optionality in GetResult
+  joinTypes: (TContext[`joinTypes`] extends Record<string, any>
+    ? TContext[`joinTypes`]
+    : {}) & {
+    [K in keyof TNewSchema & string]: TJoinType
+  }
   result: TContext[`result`]
 }
-
-// Helper type for updating context with result type
-export type WithResult<TContext extends Context, TResult> = Prettify<
-  Omit<TContext, `result`> & {
-    result: Prettify<TResult>
-  }
->
 
 // Helper type to get the result type from a context
 export type GetResult<TContext extends Context> = Prettify<
   TContext[`result`] extends object
     ? TContext[`result`]
     : TContext[`hasJoins`] extends true
-      ? TContext[`schema`]
+      ? TContext[`joinTypes`] extends Record<string, any>
+        ? ApplyJoinOptionalityToSchema<
+            TContext[`schema`],
+            TContext[`joinTypes`],
+            TContext[`fromSourceName`]
+          >
+        : TContext[`schema`]
       : TContext[`schema`][TContext[`fromSourceName`]]
+>
+
+// Helper type to apply join optionality to the schema based on joinTypes
+export type ApplyJoinOptionalityToSchema<
+  TSchema extends Record<string, any>,
+  TJoinTypes extends Record<string, string>,
+  TFromSourceName extends string,
+> = {
+  [K in keyof TSchema]: K extends TFromSourceName
+    ? // Main table (from source) - becomes optional if ANY right or full join exists
+      HasJoinType<TJoinTypes, `right` | `full`> extends true
+      ? TSchema[K] | undefined
+      : TSchema[K]
+    : // Joined table - check its specific join type AND if it's affected by subsequent joins
+      K extends keyof TJoinTypes
+      ? TJoinTypes[K] extends `left` | `full`
+        ? TSchema[K] | undefined
+        : // For inner/right joins, check if this table becomes optional due to subsequent right/full joins
+          // that don't include this table
+          IsTableMadeOptionalBySubsequentJoins<
+              K,
+              TJoinTypes,
+              TFromSourceName
+            > extends true
+          ? TSchema[K] | undefined
+          : TSchema[K]
+      : TSchema[K]
+}
+
+// Helper type to check if a table becomes optional due to subsequent joins
+type IsTableMadeOptionalBySubsequentJoins<
+  TTableAlias extends string | number | symbol,
+  TJoinTypes extends Record<string, string>,
+  TFromSourceName extends string,
+> = TTableAlias extends TFromSourceName
+  ? // Main table becomes optional if there are any right or full joins
+    HasJoinType<TJoinTypes, `right` | `full`>
+  : // Joined tables are not affected by subsequent joins in our current implementation
+    false
+
+// Helper type to check if any join has one of the specified types
+export type HasJoinType<
+  TJoinTypes extends Record<string, string>,
+  TTargetTypes extends string,
+> = true extends {
+  [K in keyof TJoinTypes]: TJoinTypes[K] extends TTargetTypes ? true : false
+}[keyof TJoinTypes]
+  ? true
+  : false
+
+// Helper type to merge contexts (for joins) - backward compatibility
+export type MergeContext<
+  TContext extends Context,
+  TNewSchema extends Record<string, any>,
+> = MergeContextWithJoinType<TContext, TNewSchema, `left`>
+
+// Helper type for updating context with result type
+export type WithResult<TContext extends Context, TResult> = Prettify<
+  Omit<TContext, `result`> & {
+    result: Prettify<TResult>
+  }
 >
 
 // Helper type to simplify complex types for better editor hints
