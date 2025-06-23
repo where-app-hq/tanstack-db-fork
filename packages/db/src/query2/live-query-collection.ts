@@ -345,19 +345,35 @@ function sendChangesToInput(
 function extractCollectionsFromQuery(query: any): Record<string, any> {
   const collections: Record<string, any> = {}
 
-  // Extract from FROM clause
-  if (query.from && query.from.type === `collectionRef`) {
-    collections[query.from.collection.id] = query.from.collection
+  // Helper function to recursively extract collections from a query or source
+  function extractFromSource(source: any) {
+    if (source.type === `collectionRef`) {
+      collections[source.collection.id] = source.collection
+    } else if (source.type === `queryRef`) {
+      // Recursively extract from subquery
+      extractFromQuery(source.query)
+    }
   }
 
-  // Extract from JOIN clauses
-  if (query.join && Array.isArray(query.join)) {
-    for (const joinClause of query.join) {
-      if (joinClause.from && joinClause.from.type === `collectionRef`) {
-        collections[joinClause.from.collection.id] = joinClause.from.collection
+  // Helper function to recursively extract collections from a query
+  function extractFromQuery(q: any) {
+    // Extract from FROM clause
+    if (q.from) {
+      extractFromSource(q.from)
+    }
+
+    // Extract from JOIN clauses
+    if (q.join && Array.isArray(q.join)) {
+      for (const joinClause of q.join) {
+        if (joinClause.from) {
+          extractFromSource(joinClause.from)
+        }
       }
     }
   }
+
+  // Start extraction from the root query
+  extractFromQuery(query)
 
   return collections
 }

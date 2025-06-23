@@ -21,7 +21,7 @@ export interface Context {
 }
 
 export type Source = {
-  [alias: string]: CollectionImpl<any, any> | QueryBuilder<any>
+  [alias: string]: CollectionImpl<any, any> | QueryBuilder<Context>
 }
 
 // Helper type to infer collection type from CollectionImpl
@@ -32,12 +32,8 @@ export type InferCollectionType<T> =
 export type SchemaFromSource<T extends Source> = Prettify<{
   [K in keyof T]: T[K] extends CollectionImpl<infer U>
     ? U
-    : T[K] extends QueryBuilder<infer C>
-      ? C extends { result: infer R }
-        ? R
-        : C extends { schema: infer S }
-          ? S
-          : never
+    : T[K] extends QueryBuilder<infer TContext>
+      ? GetResult<TContext>
       : never
 }>
 
