@@ -66,6 +66,15 @@ export function eq(
   left: Expression<boolean>,
   right: boolean | Expression<boolean>
 ): Expression<boolean>
+export function eq(
+  left: Agg<number>,
+  right: number | Expression<number>
+): Expression<boolean>
+export function eq(
+  left: Agg<string>,
+  right: string | Expression<string>
+): Expression<boolean>
+export function eq<T>(left: Agg<T>, right: any): Expression<boolean>
 export function eq(left: any, right: any): Expression<boolean> {
   return new Func(`eq`, [toExpression(left), toExpression(right)])
 }
