@@ -37,13 +37,13 @@ const usersCollection = new CollectionImpl<User>({
 describe(`Subquery Types`, () => {
   describe(`Subqueries in FROM clause`, () => {
     test(`BaseQueryBuilder preserves type information`, () => {
-      const baseQuery = new BaseQueryBuilder()
+      const _baseQuery = new BaseQueryBuilder()
         .from({ issue: issuesCollection })
         .where(({ issue }) => eq(issue.projectId, 1))
 
       // Check that the baseQuery has the correct result type
       expectTypeOf<
-        GetResult<(typeof baseQuery)[`__context`]>
+        GetResult<(typeof _baseQuery)[`__context`]>
       >().toEqualTypeOf<Issue>()
     })
 
@@ -62,7 +62,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the filteredIssues has the correct type (Issue)
-      const selectCallback = ({ filteredIssues }: any) => {
+      const _selectCallback = ({ filteredIssues }: any) => {
         expectTypeOf(filteredIssues.id).toEqualTypeOf<any>() // RefProxy<number>
         expectTypeOf(filteredIssues.title).toEqualTypeOf<any>() // RefProxy<string>
         expectTypeOf(filteredIssues.status).toEqualTypeOf<any>() // RefProxy<'open' | 'in_progress' | 'closed'>
@@ -73,7 +73,7 @@ describe(`Subquery Types`, () => {
         return {}
       }
 
-      type SelectContext = Parameters<typeof selectCallback>[0]
+      type SelectContext = Parameters<typeof _selectCallback>[0]
       expectTypeOf<SelectContext[`filteredIssues`]>().toMatchTypeOf<Issue>()
     })
 
@@ -87,7 +87,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // This should work WITHOUT any cast
-      const query = new BaseQueryBuilder()
+      const _query = new BaseQueryBuilder()
         .from({ filteredIssues: baseQuery })
         .select(({ filteredIssues }) => ({
           id: filteredIssues.id,
@@ -95,7 +95,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof query)[`__context`]>
+      type QueryResult = GetResult<(typeof _query)[`__context`]>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         id: number
         title: string
@@ -110,7 +110,7 @@ describe(`Subquery Types`, () => {
         .where(({ user }) => eq(user.status, `active`))
 
       // This should work WITHOUT any cast
-      const query = new BaseQueryBuilder()
+      const _query = new BaseQueryBuilder()
         .from({ issue: issuesCollection })
         .join({ activeUser: activeUsersQuery }, ({ issue, activeUser }) =>
           eq(issue.userId, activeUser.id)
@@ -122,7 +122,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof query)[`__context`]>
+      type QueryResult = GetResult<(typeof _query)[`__context`]>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         issueId: number
         issueTitle: string
@@ -140,7 +140,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // This should work WITHOUT any cast
-      const query = new BaseQueryBuilder()
+      const _query = new BaseQueryBuilder()
         .from({ issue: issuesCollection })
         .join({ activeUser: userNamesQuery }, ({ issue, activeUser }) =>
           eq(issue.userId, activeUser.id)
@@ -151,7 +151,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof query)[`__context`]>
+      type QueryResult = GetResult<(typeof _query)[`__context`]>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         issueId: number
         userName: string | undefined
@@ -166,7 +166,7 @@ describe(`Subquery Types`, () => {
         .where(({ issue }) => eq(issue.projectId, 1))
 
       // Aggregate query using base query - NO CAST!
-      const allAggregate = new BaseQueryBuilder()
+      const _allAggregate = new BaseQueryBuilder()
         .from({ issue: baseQuery })
         .select(({ issue }) => ({
           count: count(issue.id),
@@ -174,7 +174,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type AggregateResult = GetResult<(typeof allAggregate)[`__context`]>
+      type AggregateResult = GetResult<(typeof _allAggregate)[`__context`]>
       expectTypeOf<AggregateResult>().toEqualTypeOf<{
         count: number
         avgDuration: number
@@ -187,7 +187,7 @@ describe(`Subquery Types`, () => {
         .where(({ issue }) => eq(issue.projectId, 1))
 
       // Group by query using base query - NO CAST!
-      const byStatusAggregate = new BaseQueryBuilder()
+      const _byStatusAggregate = new BaseQueryBuilder()
         .from({ issue: baseQuery })
         .groupBy(({ issue }) => issue.status)
         .select(({ issue }) => ({
@@ -197,7 +197,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type GroupedResult = GetResult<(typeof byStatusAggregate)[`__context`]>
+      type GroupedResult = GetResult<(typeof _byStatusAggregate)[`__context`]>
       expectTypeOf<GroupedResult>().toEqualTypeOf<{
         status: `open` | `in_progress` | `closed`
         count: number
@@ -219,7 +219,7 @@ describe(`Subquery Types`, () => {
         .where(({ issue }) => eq(issue.duration, 10))
 
       // Final query using nested subquery - NO CAST!
-      const query = new BaseQueryBuilder()
+      const _query = new BaseQueryBuilder()
         .from({ issue: highDurationIssues })
         .select(({ issue }) => ({
           id: issue.id,
@@ -227,7 +227,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof query)[`__context`]>
+      type QueryResult = GetResult<(typeof _query)[`__context`]>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         id: number
         title: string
@@ -242,7 +242,7 @@ describe(`Subquery Types`, () => {
         .where(({ user }) => eq(user.status, `active`))
 
       // Join regular collection with subquery - NO CAST!
-      const query = new BaseQueryBuilder()
+      const _query = new BaseQueryBuilder()
         .from({ issue: issuesCollection })
         .join({ activeUser: activeUsers }, ({ issue, activeUser }) =>
           eq(issue.userId, activeUser.id)
@@ -253,7 +253,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof query)[`__context`]>
+      type QueryResult = GetResult<(typeof _query)[`__context`]>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         issueId: number
         userName: string | undefined
@@ -266,7 +266,7 @@ describe(`Subquery Types`, () => {
         .where(({ issue }) => eq(issue.projectId, 1))
 
       // Join subquery with regular collection - NO CAST!
-      const query = new BaseQueryBuilder()
+      const _query = new BaseQueryBuilder()
         .from({ issue: filteredIssues })
         .join({ user: usersCollection }, ({ issue, user }) =>
           eq(issue.userId, user.id)
@@ -277,7 +277,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof query)[`__context`]>
+      type QueryResult = GetResult<(typeof _query)[`__context`]>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         issueId: number
         userName: string | undefined
