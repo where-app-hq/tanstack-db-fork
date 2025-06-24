@@ -6,13 +6,18 @@ import {
 } from "@electric-sql/d2mini"
 import { evaluateExpression } from "./evaluators.js"
 import { compileQuery } from "./index.js"
-import type { CollectionRef, JoinClause, QueryRef } from "../ir.js"
+import type { CollectionRef, JoinClause, Query, QueryRef } from "../ir.js"
 import type { IStreamBuilder, JoinType } from "@electric-sql/d2mini"
 import type {
   KeyedStream,
   NamespacedAndKeyedStream,
   NamespacedRow,
 } from "../../types.js"
+
+/**
+ * Cache for compiled subqueries to avoid duplicate compilation
+ */
+type QueryCache = WeakMap<Query, KeyedStream>
 
 /**
  * Processes all join clauses in a query
@@ -22,7 +27,8 @@ export function processJoins(
   joinClauses: Array<JoinClause>,
   tables: Record<string, KeyedStream>,
   mainTableAlias: string,
-  allInputs: Record<string, KeyedStream>
+  allInputs: Record<string, KeyedStream>,
+  cache: QueryCache
 ): NamespacedAndKeyedStream {
   let resultPipeline = pipeline
 
@@ -32,7 +38,8 @@ export function processJoins(
       joinClause,
       tables,
       mainTableAlias,
-      allInputs
+      allInputs,
+      cache
     )
   }
 
@@ -47,12 +54,14 @@ function processJoin(
   joinClause: JoinClause,
   tables: Record<string, KeyedStream>,
   mainTableAlias: string,
-  allInputs: Record<string, KeyedStream>
+  allInputs: Record<string, KeyedStream>,
+  cache: QueryCache
 ): NamespacedAndKeyedStream {
   // Get the joined table alias and input stream
   const { alias: joinedTableAlias, input: joinedInput } = processJoinSource(
     joinClause.from,
-    allInputs
+    allInputs,
+    cache
   )
 
   // Add the joined table to the tables map
@@ -133,7 +142,8 @@ function processJoin(
  */
 function processJoinSource(
   from: CollectionRef | QueryRef,
-  allInputs: Record<string, KeyedStream>
+  allInputs: Record<string, KeyedStream>,
+  cache: QueryCache
 ): { alias: string; input: KeyedStream } {
   switch (from.type) {
     case `collectionRef`: {
@@ -146,8 +156,8 @@ function processJoinSource(
       return { alias: from.alias, input }
     }
     case `queryRef`: {
-      // Recursively compile the sub-query
-      const subQueryInput = compileQuery(from.query, allInputs)
+      // Recursively compile the sub-query with cache
+      const subQueryInput = compileQuery(from.query, allInputs, cache)
       return { alias: from.alias, input: subQueryInput as KeyedStream }
     }
     default:

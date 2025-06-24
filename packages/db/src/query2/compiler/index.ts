@@ -13,15 +13,28 @@ import type {
 } from "../../types.js"
 
 /**
+ * Cache for compiled subqueries to avoid duplicate compilation
+ */
+type QueryCache = WeakMap<Query, KeyedStream>
+
+/**
  * Compiles a query2 IR into a D2 pipeline
  * @param query The query IR to compile
  * @param inputs Mapping of collection names to input streams
+ * @param cache Optional cache for compiled subqueries (used internally for recursion)
  * @returns A stream builder representing the compiled query
  */
 export function compileQuery<T extends IStreamBuilder<unknown>>(
   query: Query,
-  inputs: Record<string, KeyedStream>
+  inputs: Record<string, KeyedStream>,
+  cache: QueryCache = new WeakMap()
 ): T {
+  // Check if this query has already been compiled
+  const cachedResult = cache.get(query)
+  if (cachedResult) {
+    return cachedResult as T
+  }
+
   // Create a copy of the inputs map to avoid modifying the original
   const allInputs = { ...inputs }
 
@@ -31,7 +44,8 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
   // Process the FROM clause to get the main table
   const { alias: mainTableAlias, input: mainInput } = processFrom(
     query.from,
-    allInputs
+    allInputs,
+    cache
   )
   tables[mainTableAlias] = mainInput
 
@@ -54,7 +68,8 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
       query.join,
       tables,
       mainTableAlias,
-      allInputs
+      allInputs,
+      cache
     )
   }
 
@@ -89,7 +104,10 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
     }
 
     // For GROUP BY queries, the SELECT is handled within processGroupBy
-    return pipeline as T
+    const result = pipeline as T
+    // Cache the result before returning
+    cache.set(query, result as KeyedStream)
+    return result
   }
 
   // Process the HAVING clause if it exists (only applies after GROUP BY)
@@ -120,7 +138,10 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
         )
       : pipeline
 
-  return resultPipeline as T
+  const result = resultPipeline as T
+  // Cache the result before returning
+  cache.set(query, result as KeyedStream)
+  return result
 }
 
 /**
@@ -128,7 +149,8 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
  */
 function processFrom(
   from: CollectionRef | QueryRef,
-  allInputs: Record<string, KeyedStream>
+  allInputs: Record<string, KeyedStream>,
+  cache: QueryCache
 ): { alias: string; input: KeyedStream } {
   switch (from.type) {
     case `collectionRef`: {
@@ -141,8 +163,8 @@ function processFrom(
       return { alias: from.alias, input }
     }
     case `queryRef`: {
-      // Recursively compile the sub-query
-      const subQueryInput = compileQuery(from.query, allInputs)
+      // Recursively compile the sub-query with cache
+      const subQueryInput = compileQuery(from.query, allInputs, cache)
       return { alias: from.alias, input: subQueryInput as KeyedStream }
     }
     default:
