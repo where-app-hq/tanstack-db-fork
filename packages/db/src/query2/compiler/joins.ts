@@ -12,12 +12,13 @@ import type {
   KeyedStream,
   NamespacedAndKeyedStream,
   NamespacedRow,
+  ResultStream,
 } from "../../types.js"
 
 /**
  * Cache for compiled subqueries to avoid duplicate compilation
  */
-type QueryCache = WeakMap<Query, KeyedStream>
+type QueryCache = WeakMap<Query, ResultStream>
 
 /**
  * Processes all join clauses in a query
@@ -162,7 +163,17 @@ function processJoinSource(
     case `queryRef`: {
       // Recursively compile the sub-query with cache
       const subQueryInput = compileQuery(from.query, allInputs, cache)
-      return { alias: from.alias, input: subQueryInput as KeyedStream }
+
+      // Subqueries may return [key, [value, orderByIndex]] (with ORDER BY) or [key, value] (without ORDER BY)
+      // We need to extract just the value for use in parent queries
+      const extractedInput = subQueryInput.pipe(
+        map((data: any) => {
+          const [key, [value, _orderByIndex]] = data
+          return [key, value] as [unknown, any]
+        })
+      )
+
+      return { alias: from.alias, input: extractedInput as KeyedStream }
     }
     default:
       throw new Error(`Unsupported join source type: ${(from as any).type}`)

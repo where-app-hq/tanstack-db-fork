@@ -12,11 +12,7 @@ import type {
   UtilsRecord,
 } from "../types.js"
 import type { Context, GetResult } from "./builder/types.js"
-import type {
-  IStreamBuilder,
-  MultiSetArray,
-  RootStreamBuilder,
-} from "@electric-sql/d2mini"
+import type { MultiSetArray, RootStreamBuilder } from "@electric-sql/d2mini"
 
 // Global counter for auto-generated collection IDs
 let liveQueryCollectionCounter = 0
@@ -119,6 +115,33 @@ export function liveQueryCollectionOptions<
   // getKey function
   const resultKeys = new WeakMap<object, unknown>()
 
+  // WeakMap to store the orderBy index for each result
+  const orderByIndices = new WeakMap<object, string>()
+
+  // Create compare function for ordering if the query has orderBy
+  const compare =
+    query.orderBy && query.orderBy.length > 0
+      ? (val1: TResult, val2: TResult): number => {
+          // Use the orderBy index stored in the WeakMap
+          const index1 = orderByIndices.get(val1)
+          const index2 = orderByIndices.get(val2)
+
+          // Compare fractional indices lexicographically
+          if (index1 && index2) {
+            if (index1 < index2) {
+              return -1
+            } else if (index1 > index2) {
+              return 1
+            } else {
+              return 0
+            }
+          }
+
+          // Fallback to no ordering if indices are missing
+          return 0
+        }
+      : undefined
+
   // Create the sync configuration
   const sync: SyncConfig<TResult> = {
     sync: ({ begin, write, commit }) => {
@@ -132,7 +155,7 @@ export function liveQueryCollectionOptions<
       )
 
       // Compile the query to a D2 pipeline
-      const pipeline = compileQuery<IStreamBuilder<[unknown, TResult]>>(
+      const pipeline = compileQuery(
         query,
         inputs as Record<string, KeyedStream>
       )
@@ -143,27 +166,41 @@ export function liveQueryCollectionOptions<
           begin()
           data
             .getInner()
-            .reduce((acc, [[key, value], multiplicity]) => {
+            .reduce((acc, [[key, tupleData], multiplicity]) => {
+              // All queries now consistently return [value, orderByIndex] format
+              // where orderByIndex is undefined for queries without ORDER BY
+              const [value, orderByIndex] = tupleData as [
+                TResult,
+                string | undefined,
+              ]
+
               const changes = acc.get(key) || {
                 deletes: 0,
                 inserts: 0,
                 value,
+                orderByIndex,
               }
               if (multiplicity < 0) {
                 changes.deletes += Math.abs(multiplicity)
               } else if (multiplicity > 0) {
                 changes.inserts += multiplicity
                 changes.value = value
+                changes.orderByIndex = orderByIndex
               }
               acc.set(key, changes)
               return acc
-            }, new Map<unknown, { deletes: number; inserts: number; value: TResult }>())
+            }, new Map<unknown, { deletes: number; inserts: number; value: TResult; orderByIndex: string | undefined }>())
             .forEach((changes, rawKey) => {
-              const { deletes, inserts, value } = changes
+              const { deletes, inserts, value, orderByIndex } = changes
 
               // Store the key of the result so that we can retrieve it in the
               // getKey function
               resultKeys.set(value, rawKey)
+
+              // Store the orderBy index if it exists
+              if (orderByIndex !== undefined) {
+                orderByIndices.set(value, orderByIndex)
+              }
 
               if (inserts && !deletes) {
                 write({
@@ -216,6 +253,7 @@ export function liveQueryCollectionOptions<
     getKey:
       config.getKey || ((item) => resultKeys.get(item) as string | number),
     sync,
+    compare,
     schema: config.schema,
     onInsert: config.onInsert,
     onUpdate: config.onUpdate,

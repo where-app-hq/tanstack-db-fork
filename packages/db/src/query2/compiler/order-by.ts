@@ -1,16 +1,20 @@
-import { orderBy } from "@electric-sql/d2mini"
+import { orderByWithFractionalIndex } from "@electric-sql/d2mini"
 import { compileExpression } from "./evaluators.js"
 import type { OrderByClause } from "../ir.js"
 import type { NamespacedAndKeyedStream, NamespacedRow } from "../../types.js"
+import type { IStreamBuilder, KeyValue } from "@electric-sql/d2mini"
 
 /**
  * Processes the ORDER BY clause
  * Works with the new structure that has both namespaced row data and __select_results
+ * Always uses fractional indexing and adds the index as __ordering_index to the result
  */
 export function processOrderBy(
   pipeline: NamespacedAndKeyedStream,
-  orderByClause: Array<OrderByClause>
-): NamespacedAndKeyedStream {
+  orderByClause: Array<OrderByClause>,
+  limit?: number,
+  offset?: number
+): IStreamBuilder<KeyValue<unknown, [NamespacedRow, string]>> {
   // Pre-compile all order by expressions
   const compiledOrderBy = orderByClause.map((clause) => ({
     compiledExpression: compileExpression(clause.expression),
@@ -123,6 +127,13 @@ export function processOrderBy(
 
   const comparator = makeComparator()
 
-  // Apply the orderBy operator
-  return pipeline.pipe(orderBy(valueExtractor, { comparator }))
+  // Use fractional indexing and return the tuple [value, index]
+  return pipeline.pipe(
+    orderByWithFractionalIndex(valueExtractor, {
+      limit,
+      offset,
+      comparator,
+    })
+    // orderByWithFractionalIndex returns [key, [value, index]] - we keep this format
+  )
 }

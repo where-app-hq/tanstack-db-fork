@@ -5,17 +5,16 @@ import { processGroupBy } from "./group-by.js"
 import { processOrderBy } from "./order-by.js"
 import { processSelectToResults } from "./select.js"
 import type { CollectionRef, Query, QueryRef } from "../ir.js"
-import type { IStreamBuilder } from "@electric-sql/d2mini"
 import type {
-  InputRow,
   KeyedStream,
   NamespacedAndKeyedStream,
+  ResultStream,
 } from "../../types.js"
 
 /**
  * Cache for compiled subqueries to avoid duplicate compilation
  */
-type QueryCache = WeakMap<Query, KeyedStream>
+type QueryCache = WeakMap<Query, ResultStream>
 
 /**
  * Compiles a query2 IR into a D2 pipeline
@@ -24,15 +23,15 @@ type QueryCache = WeakMap<Query, KeyedStream>
  * @param cache Optional cache for compiled subqueries (used internally for recursion)
  * @returns A stream builder representing the compiled query
  */
-export function compileQuery<T extends IStreamBuilder<unknown>>(
+export function compileQuery(
   query: Query,
   inputs: Record<string, KeyedStream>,
   cache: QueryCache = new WeakMap()
-): T {
+): ResultStream {
   // Check if this query has already been compiled
   const cachedResult = cache.get(query)
   if (cachedResult) {
-    return cachedResult as T
+    return cachedResult
   }
 
   // Create a copy of the inputs map to avoid modifying the original
@@ -145,7 +144,26 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
 
   // Process orderBy parameter if it exists
   if (query.orderBy && query.orderBy.length > 0) {
-    pipeline = processOrderBy(pipeline, query.orderBy)
+    const orderedPipeline = processOrderBy(
+      pipeline,
+      query.orderBy,
+      query.limit,
+      query.offset
+    )
+
+    // Final step: extract the __select_results and include orderBy index
+    const resultPipeline = orderedPipeline.pipe(
+      map(([key, [row, orderByIndex]]) => {
+        // Extract the final results from __select_results and include orderBy index
+        const finalResults = (row as any).__select_results
+        return [key, [finalResults, orderByIndex]] as [unknown, [any, string]]
+      })
+    )
+
+    const result = resultPipeline
+    // Cache the result before returning
+    cache.set(query, result)
+    return result
   } else if (query.limit !== undefined || query.offset !== undefined) {
     // If there's a limit or offset without orderBy, throw an error
     throw new Error(
@@ -153,18 +171,21 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
     )
   }
 
-  // Final step: extract the __select_results as the final output
-  const resultPipeline: KeyedStream = pipeline.pipe(
+  // Final step: extract the __select_results and return tuple format (no orderBy)
+  const resultPipeline: ResultStream = pipeline.pipe(
     map(([key, row]) => {
-      // Extract the final results from __select_results
+      // Extract the final results from __select_results and return [key, [results, undefined]]
       const finalResults = (row as any).__select_results
-      return [key, finalResults] as InputRow
+      return [key, [finalResults, undefined]] as [
+        unknown,
+        [any, string | undefined],
+      ]
     })
   )
 
-  const result = resultPipeline as T
+  const result = resultPipeline
   // Cache the result before returning
-  cache.set(query, result as KeyedStream)
+  cache.set(query, result)
   return result
 }
 
@@ -189,7 +210,17 @@ function processFrom(
     case `queryRef`: {
       // Recursively compile the sub-query with cache
       const subQueryInput = compileQuery(from.query, allInputs, cache)
-      return { alias: from.alias, input: subQueryInput as KeyedStream }
+
+      // Subqueries may return [key, [value, orderByIndex]] (with ORDER BY) or [key, value] (without ORDER BY)
+      // We need to extract just the value for use in parent queries
+      const extractedInput = subQueryInput.pipe(
+        map((data: any) => {
+          const [key, [value, _orderByIndex]] = data
+          return [key, value] as [unknown, any]
+        })
+      )
+
+      return { alias: from.alias, input: extractedInput }
     }
     default:
       throw new Error(`Unsupported FROM type: ${(from as any).type}`)

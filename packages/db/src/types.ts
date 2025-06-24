@@ -283,6 +283,12 @@ export type InputRow = [unknown, Record<string, unknown>]
 export type KeyedStream = IStreamBuilder<InputRow>
 
 /**
+ * Result stream type representing the output of compiled queries
+ * Always returns [key, [result, orderByIndex]] where orderByIndex is undefined for unordered queries
+ */
+export type ResultStream = IStreamBuilder<[unknown, [any, string | undefined]]>
+
+/**
  * A namespaced row is a row withing a pipeline that had each table wrapped in its alias
  */
 export type NamespacedRow = Record<string, Record<string, unknown>>
