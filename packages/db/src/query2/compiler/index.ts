@@ -3,7 +3,7 @@ import { compileExpression } from "./evaluators.js"
 import { processJoins } from "./joins.js"
 import { processGroupBy } from "./group-by.js"
 import { processOrderBy } from "./order-by.js"
-import { processSelect } from "./select.js"
+import { processSelectToResults } from "./select.js"
 import type { CollectionRef, Query, QueryRef } from "../ir.js"
 import type { IStreamBuilder } from "@electric-sql/d2mini"
 import type {
@@ -83,6 +83,30 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
     )
   }
 
+  // Process the SELECT clause early - always create __select_results
+  // This eliminates duplication and allows for future DISTINCT implementation
+  if (query.select) {
+    pipeline = processSelectToResults(pipeline, query.select, allInputs)
+  } else {
+    // If no SELECT clause, create __select_results with the main table data
+    pipeline = pipeline.pipe(
+      map(([key, namespacedRow]) => {
+        const selectResults =
+          !query.join && !query.groupBy
+            ? namespacedRow[mainTableAlias]
+            : namespacedRow
+
+        return [
+          key,
+          {
+            ...namespacedRow,
+            __select_results: selectResults,
+          },
+        ] as [string, typeof namespacedRow & { __select_results: any }]
+      })
+    )
+  }
+
   // Process the GROUP BY clause if it exists
   if (query.groupBy && query.groupBy.length > 0) {
     pipeline = processGroupBy(
@@ -91,29 +115,32 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
       query.having,
       query.select
     )
-
-    // HAVING clause is handled within processGroupBy
-
-    // Process orderBy parameter if it exists
-    if (query.orderBy && query.orderBy.length > 0) {
-      pipeline = processOrderBy(pipeline, query.orderBy)
-    } else if (query.limit !== undefined || query.offset !== undefined) {
-      // If there's a limit or offset without orderBy, throw an error
-      throw new Error(
-        `LIMIT and OFFSET require an ORDER BY clause to ensure deterministic results`
+  } else if (query.select) {
+    // Check if SELECT contains aggregates but no GROUP BY (implicit single-group aggregation)
+    const hasAggregates = Object.values(query.select).some(
+      (expr) => expr.type === `agg`
+    )
+    if (hasAggregates) {
+      // Handle implicit single-group aggregation
+      pipeline = processGroupBy(
+        pipeline,
+        [], // Empty group by means single group
+        query.having,
+        query.select
       )
     }
-
-    // For GROUP BY queries, the SELECT is handled within processGroupBy
-    const result = pipeline as T
-    // Cache the result before returning
-    cache.set(query, result as KeyedStream)
-    return result
   }
 
   // Process the HAVING clause if it exists (only applies after GROUP BY)
-  if (query.having) {
-    throw new Error(`HAVING clause requires GROUP BY clause`)
+  if (query.having && (!query.groupBy || query.groupBy.length === 0)) {
+    // Check if we have aggregates in SELECT that would trigger implicit grouping
+    const hasAggregates = query.select
+      ? Object.values(query.select).some((expr) => expr.type === `agg`)
+      : false
+
+    if (!hasAggregates) {
+      throw new Error(`HAVING clause requires GROUP BY clause`)
+    }
   }
 
   // Process orderBy parameter if it exists
@@ -126,35 +153,14 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
     )
   }
 
-  // Process the SELECT clause - this is where we flatten the structure
-  const resultPipeline: KeyedStream | NamespacedAndKeyedStream = query.select
-    ? (() => {
-        // Check if SELECT contains aggregates but no GROUP BY
-        const hasAggregates = Object.values(query.select).some(
-          (expr) => expr.type === `agg`
-        )
-        if (hasAggregates && (!query.groupBy || query.groupBy.length === 0)) {
-          // Handle implicit single-group aggregation
-          return processGroupBy(
-            pipeline,
-            [], // Empty group by means single group
-            query.having,
-            query.select
-          )
-        } else {
-          // Normal SELECT processing
-          return processSelect(pipeline, query.select, allInputs)
-        }
-      })()
-    : // If no select clause, return the main table data directly
-      !query.join && !query.groupBy
-      ? pipeline.pipe(
-          map(
-            ([key, namespacedRow]) =>
-              [key, namespacedRow[mainTableAlias]] as InputRow
-          )
-        )
-      : pipeline
+  // Final step: extract the __select_results as the final output
+  const resultPipeline: KeyedStream = pipeline.pipe(
+    map(([key, row]) => {
+      // Extract the final results from __select_results
+      const finalResults = (row as any).__select_results
+      return [key, finalResults] as InputRow
+    })
+  )
 
   const result = resultPipeline as T
   // Cache the result before returning

@@ -56,6 +56,7 @@ function validateAndCreateMapping(
 
 /**
  * Processes the GROUP BY clause with optional HAVING and SELECT
+ * Works with the new __select_results structure from early SELECT processing
  */
 export function processGroupBy(
   pipeline: NamespacedAndKeyedStream,
@@ -86,29 +87,33 @@ export function processGroupBy(
       groupBy(keyExtractor, aggregates)
     ) as NamespacedAndKeyedStream
 
-    // Process the SELECT clause for single-group aggregation
-    if (selectClause) {
-      pipeline = pipeline.pipe(
-        map(([, aggregatedRow]) => {
-          const result: Record<string, any> = {}
+    // Update __select_results to include aggregate values
+    pipeline = pipeline.pipe(
+      map(([, aggregatedRow]) => {
+        // Start with the existing __select_results from early SELECT processing
+        const selectResults = (aggregatedRow as any).__select_results || {}
+        const finalResults: Record<string, any> = { ...selectResults }
 
-          // For single-group aggregation, just copy aggregate results
+        if (selectClause) {
+          // Update with aggregate results
           for (const [alias, expr] of Object.entries(selectClause)) {
             if (expr.type === `agg`) {
-              result[alias] = aggregatedRow[alias]
-            } else {
-              // Non-aggregate expressions in single-group aggregation
-              // This is tricky - we need a representative row
-              // For now, just return null for non-aggregates
-              result[alias] = null
+              finalResults[alias] = aggregatedRow[alias]
             }
+            // Non-aggregates keep their original values from early SELECT processing
           }
+        }
 
-          // Use a single key for the result
-          return [`single_group`, result] as [unknown, Record<string, any>]
-        })
-      )
-    }
+        // Use a single key for the result and update __select_results
+        return [
+          `single_group`,
+          {
+            ...aggregatedRow,
+            __select_results: finalResults,
+          },
+        ] as [unknown, Record<string, any>]
+      })
+    )
 
     // Apply HAVING clause if present
     if (havingClause) {
@@ -119,8 +124,9 @@ export function processGroupBy(
       const compiledHaving = compileExpression(transformedHavingClause)
 
       pipeline = pipeline.pipe(
-        filter(([, aggregatedRow]) => {
-          const namespacedRow = { result: aggregatedRow }
+        filter(([, row]) => {
+          // Create a namespaced row structure for HAVING evaluation
+          const namespacedRow = { result: (row as any).__select_results }
           return compiledHaving(namespacedRow)
         })
       )
@@ -129,7 +135,7 @@ export function processGroupBy(
     return pipeline
   }
 
-  // Original multi-group logic...
+  // Multi-group aggregation logic...
   // Validate and create mapping for non-aggregate expressions in SELECT
   const mapping = validateAndCreateMapping(groupByClause, selectClause)
 
@@ -137,7 +143,14 @@ export function processGroupBy(
   const compiledGroupByExpressions = groupByClause.map(compileExpression)
 
   // Create a key extractor function using simple __key_X format
-  const keyExtractor = ([, namespacedRow]: [string, NamespacedRow]) => {
+  const keyExtractor = ([, row]: [
+    string,
+    NamespacedRow & { __select_results?: any },
+  ]) => {
+    // Use the original namespaced row for GROUP BY expressions, not __select_results
+    const namespacedRow = { ...row }
+    delete (namespacedRow as any).__select_results
+
     const key: Record<string, unknown> = {}
 
     // Use simple __key_X format for each groupBy expression
@@ -166,44 +179,58 @@ export function processGroupBy(
   // Apply the groupBy operator
   pipeline = pipeline.pipe(groupBy(keyExtractor, aggregates))
 
-  // Process the SELECT clause to handle non-aggregate expressions
-  if (selectClause) {
-    pipeline = pipeline.pipe(
-      map(([, aggregatedRow]) => {
-        const result: Record<string, any> = {}
+  // Update __select_results to handle GROUP BY results
+  pipeline = pipeline.pipe(
+    map(([, aggregatedRow]) => {
+      // Start with the existing __select_results from early SELECT processing
+      const selectResults = (aggregatedRow as any).__select_results || {}
+      const finalResults: Record<string, any> = {}
 
-        // For non-aggregate expressions in SELECT, use cached mapping
+      if (selectClause) {
+        // Process each SELECT expression
         for (const [alias, expr] of Object.entries(selectClause)) {
           if (expr.type !== `agg`) {
-            // Use cached mapping to get the corresponding __key_X
+            // Use cached mapping to get the corresponding __key_X for non-aggregates
             const groupIndex = mapping.selectToGroupByIndex.get(alias)
             if (groupIndex !== undefined) {
-              result[alias] = aggregatedRow[`__key_${groupIndex}`]
+              finalResults[alias] = aggregatedRow[`__key_${groupIndex}`]
             } else {
-              // This should never happen due to validation, but handle gracefully
-              result[alias] = null
+              // Fallback to original SELECT results
+              finalResults[alias] = selectResults[alias]
             }
           } else {
-            result[alias] = aggregatedRow[alias]
+            // Use aggregate results
+            finalResults[alias] = aggregatedRow[alias]
           }
         }
-
-        // Generate a simple key for the live collection using group values
-        let finalKey: unknown
-        if (groupByClause.length === 1) {
-          finalKey = aggregatedRow[`__key_0`]
-        } else {
-          const keyParts: Array<unknown> = []
-          for (let i = 0; i < groupByClause.length; i++) {
-            keyParts.push(aggregatedRow[`__key_${i}`])
-          }
-          finalKey = JSON.stringify(keyParts)
+      } else {
+        // No SELECT clause - just use the group keys
+        for (let i = 0; i < groupByClause.length; i++) {
+          finalResults[`__key_${i}`] = aggregatedRow[`__key_${i}`]
         }
+      }
 
-        return [finalKey, result] as [unknown, Record<string, any>]
-      })
-    )
-  }
+      // Generate a simple key for the live collection using group values
+      let finalKey: unknown
+      if (groupByClause.length === 1) {
+        finalKey = aggregatedRow[`__key_0`]
+      } else {
+        const keyParts: Array<unknown> = []
+        for (let i = 0; i < groupByClause.length; i++) {
+          keyParts.push(aggregatedRow[`__key_${i}`])
+        }
+        finalKey = JSON.stringify(keyParts)
+      }
+
+      return [
+        finalKey,
+        {
+          ...aggregatedRow,
+          __select_results: finalResults,
+        },
+      ] as [unknown, Record<string, any>]
+    })
+  )
 
   // Apply HAVING clause if present
   if (havingClause) {
@@ -214,8 +241,9 @@ export function processGroupBy(
     const compiledHaving = compileExpression(transformedHavingClause)
 
     pipeline = pipeline.pipe(
-      filter(([, aggregatedRow]) => {
-        const namespacedRow = { result: aggregatedRow }
+      filter(([, row]) => {
+        // Create a namespaced row structure for HAVING evaluation
+        const namespacedRow = { result: (row as any).__select_results }
         return compiledHaving(namespacedRow)
       })
     )
