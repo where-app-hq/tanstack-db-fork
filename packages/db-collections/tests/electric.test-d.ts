@@ -97,6 +97,23 @@ describe(`Electric collection type resolution tests`, () => {
     expectTypeOf<ExpectedType>().toEqualTypeOf<ExplicitType>()
   })
 
+  it(`should type the parser return values`, () => {
+    type TypeWithDate = { id: string; foo: Date }
+    electricCollectionOptions<TypeWithDate>({
+      shapeOptions: {
+        url: `test_shape`,
+        params: { table: `test_table` },
+        parser: {
+          // Parse timestamp columns into JavaScript Date objects
+          timestamptz: (date: string) => {
+            return new Date(date)
+          },
+        },
+      },
+      getKey: (item) => item.id,
+    })
+  })
+
   it(`should properly type the onInsert, onUpdate, and onDelete handlers`, () => {
     const options = electricCollectionOptions<ExplicitType>({
       shapeOptions: {

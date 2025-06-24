@@ -16,6 +16,7 @@ import type {
 import type { StandardSchemaV1 } from "@standard-schema/spec"
 import type {
   ControlMessage,
+  GetExtensions,
   Message,
   Row,
   ShapeStreamOptions,
@@ -43,7 +44,9 @@ export interface ElectricCollectionConfig<
   /**
    * Configuration options for the ElectricSQL ShapeStream
    */
-  shapeOptions: ShapeStreamOptions
+  shapeOptions: ShapeStreamOptions<
+    GetExtensions<ResolveType<TExplicit, TSchema, TFallback> & Row<unknown>>
+  >
 
   /**
    * All standard Collection configuration properties
@@ -265,7 +268,7 @@ export function electricCollectionOptions<
  * Internal function to create ElectricSQL sync configuration
  */
 function createElectricSync<T extends object>(
-  shapeOptions: ShapeStreamOptions,
+  shapeOptions: ShapeStreamOptions<GetExtensions<T & Row<unknown>>>,
   options: {
     seenTxids: Store<Set<string>>
   }
@@ -293,11 +296,12 @@ function createElectricSync<T extends object>(
   return {
     sync: (params: Parameters<SyncConfig<T>[`sync`]>[0]) => {
       const { begin, write, commit } = params
-      const stream = new ShapeStream(shapeOptions)
+      type ExtendedRow = T & Row<GetExtensions<T & Row<unknown>>>
+      const stream = new ShapeStream<ExtendedRow>(shapeOptions)
       let transactionStarted = false
       let newTxids = new Set<string>()
 
-      stream.subscribe((messages: Array<Message<Row>>) => {
+      stream.subscribe((messages: Array<Message<ExtendedRow>>) => {
         let hasUpToDate = false
 
         for (const message of messages) {
@@ -321,7 +325,7 @@ function createElectricSync<T extends object>(
               transactionStarted = true
             }
 
-            const value = message.value as unknown as T
+            const value = message.value
 
             // Include the primary key and relation info in the metadata
             const enhancedMetadata = {
