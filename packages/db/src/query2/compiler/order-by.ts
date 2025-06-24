@@ -5,6 +5,7 @@ import type { NamespacedAndKeyedStream, NamespacedRow } from "../../types.js"
 
 /**
  * Processes the ORDER BY clause
+ * Works with the new structure that has both namespaced row data and __select_results
  */
 export function processOrderBy(
   pipeline: NamespacedAndKeyedStream,
@@ -17,16 +18,29 @@ export function processOrderBy(
   }))
 
   // Create a value extractor function for the orderBy operator
-  const valueExtractor = (namespacedRow: NamespacedRow) => {
+  const valueExtractor = (row: NamespacedRow & { __select_results?: any }) => {
+    // For ORDER BY expressions, we need to provide access to both:
+    // 1. The original namespaced row data (for direct table column references)
+    // 2. The __select_results (for SELECT alias references)
+
+    // Create a merged context for expression evaluation
+    const orderByContext = { ...row }
+
+    // If there are select results, merge them at the top level for alias access
+    if (row.__select_results) {
+      // Add select results as top-level properties for alias access
+      Object.assign(orderByContext, row.__select_results)
+    }
+
     if (orderByClause.length > 1) {
       // For multiple orderBy columns, create a composite key
       return compiledOrderBy.map((compiled) =>
-        compiled.compiledExpression(namespacedRow)
+        compiled.compiledExpression(orderByContext)
       )
     } else if (orderByClause.length === 1) {
       // For a single orderBy column, use the value directly
       const compiled = compiledOrderBy[0]!
-      return compiled.compiledExpression(namespacedRow)
+      return compiled.compiledExpression(orderByContext)
     }
 
     // Default case - no ordering
