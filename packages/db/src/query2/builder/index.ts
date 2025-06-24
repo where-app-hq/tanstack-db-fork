@@ -188,8 +188,19 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
     const selectObject = callback(refProxy)
 
-    // Convert the select object to use expressions
+    // Check if any tables were spread during the callback
+    const spreadSentinels = (refProxy as any).__spreadSentinels as Set<string>
+
+    // Convert the select object to use expressions, including spread sentinels
     const select: Record<string, Expression | Agg> = {}
+
+    // First, add spread sentinels for any tables that were spread
+    for (const spreadAlias of spreadSentinels) {
+      const sentinelKey = `__SPREAD_SENTINEL__${spreadAlias}`
+      select[sentinelKey] = toExpression(spreadAlias) // Use alias as a simple reference
+    }
+
+    // Then add the explicit select fields
     for (const [key, value] of Object.entries(selectObject)) {
       if (isRefProxy(value)) {
         select[key] = toExpression(value)

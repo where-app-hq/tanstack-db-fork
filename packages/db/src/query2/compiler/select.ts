@@ -18,15 +18,36 @@ export function processSelect(
   return pipeline.pipe(
     map(([key, namespacedRow]) => {
       const result: Record<string, any> = {}
+      const spreadAliases: Array<string> = []
 
-      // Process each selected field
+      // First pass: collect spread sentinels and regular expressions
       for (const [alias, expression] of Object.entries(selectClause)) {
-        if (expression.type === `agg`) {
-          // Handle aggregate functions
-          result[alias] = evaluateAggregate(expression, namespacedRow)
+        if (alias.startsWith(`__SPREAD_SENTINEL__`)) {
+          // Extract the table alias from the sentinel key
+          const tableAlias = alias.replace(`__SPREAD_SENTINEL__`, ``)
+          spreadAliases.push(tableAlias)
         } else {
-          // Handle regular expressions
-          result[alias] = evaluateExpression(expression, namespacedRow)
+          // Process regular expressions
+          if (expression.type === `agg`) {
+            // Handle aggregate functions
+            result[alias] = evaluateAggregate(expression, namespacedRow)
+          } else {
+            // Handle regular expressions
+            result[alias] = evaluateExpression(expression, namespacedRow)
+          }
+        }
+      }
+
+      // Second pass: spread table data for any spread sentinels
+      for (const tableAlias of spreadAliases) {
+        const tableData = namespacedRow[tableAlias]
+        if (tableData && typeof tableData === `object`) {
+          // Spread the table data into the result, but don't overwrite explicit fields
+          for (const [fieldName, fieldValue] of Object.entries(tableData)) {
+            if (!(fieldName in result)) {
+              result[fieldName] = fieldValue
+            }
+          }
         }
       }
 

@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, test } from "vitest"
-import { createLiveQueryCollection, eq, gt } from "../../src/query2/index.js"
+import {
+  createLiveQueryCollection,
+  eq,
+  gt,
+  upper,
+} from "../../src/query2/index.js"
 import { createCollection } from "../../src/collection.js"
 import { mockSyncCollectionOptions } from "../utls.js"
 
@@ -599,6 +604,102 @@ describe(`Query`, () => {
       expect(results.map((u) => u.name)).toEqual(
         expect.arrayContaining([`Alice`, `Charlie`, `Dave`])
       )
+    })
+
+    test(`should support spread operator with computed fields in select`, () => {
+      const liveCollection = createLiveQueryCollection({
+        query: (q) =>
+          q
+            .from({ user: usersCollection })
+            .where(({ user }) => gt(user.age, 20))
+            .select(({ user }) => ({
+              ...user,
+              name_upper: upper(user.name),
+            })),
+      })
+
+      const results = liveCollection.toArray
+
+      expect(results).toHaveLength(3) // Alice (25), Charlie (30), Dave (22)
+
+      // Check that all original properties are present
+      results.forEach((result) => {
+        expect(result).toHaveProperty(`id`)
+        expect(result).toHaveProperty(`name`)
+        expect(result).toHaveProperty(`age`)
+        expect(result).toHaveProperty(`email`)
+        expect(result).toHaveProperty(`active`)
+        expect(result).toHaveProperty(`name_upper`)
+      })
+
+      // Verify that the computed field is correctly applied
+      expect(results.map((u) => u.name_upper)).toEqual(
+        expect.arrayContaining([`ALICE`, `CHARLIE`, `DAVE`])
+      )
+
+      // Verify original names are preserved
+      expect(results.map((u) => u.name)).toEqual(
+        expect.arrayContaining([`Alice`, `Charlie`, `Dave`])
+      )
+
+      // Test specific user data
+      const alice = results.find((u) => u.name === `Alice`)
+      expect(alice).toMatchObject({
+        id: 1,
+        name: `Alice`,
+        age: 25,
+        email: `alice@example.com`,
+        active: true,
+        name_upper: `ALICE`,
+      })
+
+      // Insert a new user and verify spread + computed field
+      const newUser = {
+        id: 5,
+        name: `Eve`,
+        age: 28,
+        email: `eve@example.com`,
+        active: true,
+      }
+      usersCollection.utils.begin()
+      usersCollection.utils.write({
+        type: `insert`,
+        value: newUser,
+      })
+      usersCollection.utils.commit()
+
+      expect(liveCollection.size).toBe(4)
+      const eve = liveCollection.get(5)
+      expect(eve).toMatchObject({
+        ...newUser,
+        name_upper: `EVE`,
+      })
+
+      // Update the user and verify the computed field is updated
+      const updatedUser = { ...newUser, name: `Evelyn` }
+      usersCollection.utils.begin()
+      usersCollection.utils.write({
+        type: `update`,
+        value: updatedUser,
+      })
+      usersCollection.utils.commit()
+
+      const evelyn = liveCollection.get(5)
+      expect(evelyn).toMatchObject({
+        ...updatedUser,
+        name_upper: `EVELYN`,
+      })
+
+      // Clean up
+      usersCollection.utils.begin()
+      usersCollection.utils.write({
+        type: `delete`,
+        value: updatedUser,
+      })
+      usersCollection.utils.commit()
+
+      expect(liveCollection.size).toBe(3)
+      expect(liveCollection.get(5)).toBeUndefined()
     })
   })
 })
