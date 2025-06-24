@@ -182,8 +182,12 @@ export function length(
   arg:
     | RefProxy<string>
     | RefProxy<string | undefined>
+    | RefProxy<Array<any>>
+    | RefProxy<Array<any> | undefined>
     | string
+    | Array<any>
     | Expression<string>
+    | Expression<Array<any>>
 ): Expression<number> {
   return new Func(`length`, [toExpression(arg)])
 }

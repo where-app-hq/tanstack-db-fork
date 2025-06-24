@@ -1,6 +1,6 @@
 import { map } from "@electric-sql/d2mini"
-import { evaluateExpression } from "./evaluators.js"
-import type { Agg, Select } from "../ir.js"
+import { compileExpression } from "./evaluators.js"
+import type { Agg, Expression, Select } from "../ir.js"
 import type {
   KeyedStream,
   NamespacedAndKeyedStream,
@@ -12,33 +12,40 @@ import type {
  */
 export function processSelect(
   pipeline: NamespacedAndKeyedStream,
-  selectClause: Select,
+  select: Select,
   _allInputs: Record<string, KeyedStream>
 ): KeyedStream {
+  // Pre-compile all select expressions
+  const compiledSelect: Array<{
+    alias: string
+    compiledExpression: (row: NamespacedRow) => any
+  }> = []
+  const spreadAliases: Array<string> = []
+
+  for (const [alias, expression] of Object.entries(select)) {
+    if (alias.startsWith(`__SPREAD_SENTINEL__`)) {
+      // Extract the table alias from the sentinel key
+      const tableAlias = alias.replace(`__SPREAD_SENTINEL__`, ``)
+      spreadAliases.push(tableAlias)
+    } else {
+      if (isAggregateExpression(expression)) {
+        // Aggregates should be handled by GROUP BY processing, not here
+        throw new Error(
+          `Aggregate expressions in SELECT clause should be handled by GROUP BY processing`
+        )
+      }
+      compiledSelect.push({
+        alias,
+        compiledExpression: compileExpression(expression as Expression),
+      })
+    }
+  }
+
   return pipeline.pipe(
     map(([key, namespacedRow]) => {
       const result: Record<string, any> = {}
-      const spreadAliases: Array<string> = []
 
-      // First pass: collect spread sentinels and regular expressions
-      for (const [alias, expression] of Object.entries(selectClause)) {
-        if (alias.startsWith(`__SPREAD_SENTINEL__`)) {
-          // Extract the table alias from the sentinel key
-          const tableAlias = alias.replace(`__SPREAD_SENTINEL__`, ``)
-          spreadAliases.push(tableAlias)
-        } else {
-          // Process regular expressions
-          if (expression.type === `agg`) {
-            // Handle aggregate functions
-            result[alias] = evaluateAggregate(expression, namespacedRow)
-          } else {
-            // Handle regular expressions
-            result[alias] = evaluateExpression(expression, namespacedRow)
-          }
-        }
-      }
-
-      // Second pass: spread table data for any spread sentinels
+      // First pass: spread table data for any spread sentinels
       for (const tableAlias of spreadAliases) {
         const tableData = namespacedRow[tableAlias]
         if (tableData && typeof tableData === `object`) {
@@ -51,41 +58,39 @@ export function processSelect(
         }
       }
 
+      // Second pass: evaluate all compiled select expressions
+      for (const { alias, compiledExpression } of compiledSelect) {
+        result[alias] = compiledExpression(namespacedRow)
+      }
+
       return [key, result] as [string, typeof result]
     })
   )
 }
 
 /**
- * Evaluates aggregate functions
- * Note: This is a simplified implementation. In a full implementation,
- * aggregates would be handled during the GROUP BY phase.
+ * Helper function to check if an expression is an aggregate
  */
-function evaluateAggregate(agg: Agg, namespacedRow: NamespacedRow): any {
-  // For now, we'll treat aggregates as if they're operating on a single row
-  // This is not correct for real aggregation, but serves as a placeholder
-  const arg = agg.args[0]
-  if (!arg) {
+function isAggregateExpression(expr: Expression | Agg): expr is Agg {
+  return expr.type === `agg`
+}
+
+/**
+ * Processes a single argument in a function context
+ */
+export function processArgument(
+  arg: Expression | Agg,
+  namespacedRow: NamespacedRow
+): any {
+  if (isAggregateExpression(arg)) {
     throw new Error(
-      `Aggregate function ${agg.name} requires at least one argument`
+      `Aggregate expressions are not supported in this context. Use GROUP BY clause for aggregates.`
     )
   }
 
-  const value = evaluateExpression(arg, namespacedRow)
+  // Pre-compile the expression and evaluate immediately
+  const compiledExpression = compileExpression(arg)
+  const value = compiledExpression(namespacedRow)
 
-  switch (agg.name) {
-    case `count`:
-      // For single row, count is always 1 if value is not null
-      return value != null ? 1 : 0
-
-    case `sum`:
-    case `avg`:
-    case `min`:
-    case `max`:
-      // For single row, these functions just return the value
-      return value
-
-    default:
-      throw new Error(`Unknown aggregate function: ${agg.name}`)
-  }
+  return value
 }

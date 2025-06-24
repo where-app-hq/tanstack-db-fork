@@ -4,10 +4,10 @@ import {
   join as joinOperator,
   map,
 } from "@electric-sql/d2mini"
-import { evaluateExpression } from "./evaluators.js"
+import { compileExpression } from "./evaluators.js"
 import { compileQuery } from "./index.js"
-import type { CollectionRef, JoinClause, Query, QueryRef } from "../ir.js"
 import type { IStreamBuilder, JoinType } from "@electric-sql/d2mini"
+import type { CollectionRef, JoinClause, Query, QueryRef } from "../ir.js"
 import type {
   KeyedStream,
   NamespacedAndKeyedStream,
@@ -75,11 +75,15 @@ function processJoin(
         ? `full`
         : (joinClause.type as JoinType)
 
+  // Pre-compile the join expressions
+  const compiledLeftExpr = compileExpression(joinClause.left)
+  const compiledRightExpr = compileExpression(joinClause.right)
+
   // Prepare the main pipeline for joining
   const mainPipeline = pipeline.pipe(
     map(([currentKey, namespacedRow]) => {
       // Extract the join key from the left side of the join condition
-      const leftKey = evaluateExpression(joinClause.left, namespacedRow)
+      const leftKey = compiledLeftExpr(namespacedRow)
 
       // Return [joinKey, [originalKey, namespacedRow]]
       return [leftKey, [currentKey, namespacedRow]] as [
@@ -96,7 +100,7 @@ function processJoin(
       const namespacedRow: NamespacedRow = { [joinedTableAlias]: row }
 
       // Extract the join key from the right side of the join condition
-      const rightKey = evaluateExpression(joinClause.right, namespacedRow)
+      const rightKey = compiledRightExpr(namespacedRow)
 
       // Return [joinKey, [originalKey, namespacedRow]]
       return [rightKey, [currentKey, namespacedRow]] as [

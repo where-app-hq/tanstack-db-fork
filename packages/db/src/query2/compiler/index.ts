@@ -1,5 +1,5 @@
 import { filter, map } from "@electric-sql/d2mini"
-import { evaluateExpression } from "./evaluators.js"
+import { compileExpression } from "./evaluators.js"
 import { processJoins } from "./joins.js"
 import { processGroupBy } from "./group-by.js"
 import { processOrderBy } from "./order-by.js"
@@ -75,9 +75,10 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
 
   // Process the WHERE clause if it exists
   if (query.where) {
+    const compiledWhere = compileExpression(query.where)
     pipeline = pipeline.pipe(
       filter(([_key, namespacedRow]) => {
-        return evaluateExpression(query.where!, namespacedRow)
+        return compiledWhere(namespacedRow)
       })
     )
   }
@@ -127,7 +128,24 @@ export function compileQuery<T extends IStreamBuilder<unknown>>(
 
   // Process the SELECT clause - this is where we flatten the structure
   const resultPipeline: KeyedStream | NamespacedAndKeyedStream = query.select
-    ? processSelect(pipeline, query.select, allInputs)
+    ? (() => {
+        // Check if SELECT contains aggregates but no GROUP BY
+        const hasAggregates = Object.values(query.select).some(
+          (expr) => expr.type === `agg`
+        )
+        if (hasAggregates && (!query.groupBy || query.groupBy.length === 0)) {
+          // Handle implicit single-group aggregation
+          return processGroupBy(
+            pipeline,
+            [], // Empty group by means single group
+            query.having,
+            query.select
+          )
+        } else {
+          // Normal SELECT processing
+          return processSelect(pipeline, query.select, allInputs)
+        }
+      })()
     : // If no select clause, return the main table data directly
       !query.join && !query.groupBy
       ? pipeline.pipe(

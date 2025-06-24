@@ -1,6 +1,6 @@
 import { orderBy } from "@electric-sql/d2mini"
-import { evaluateExpression } from "./evaluators.js"
-import type { OrderBy } from "../ir.js"
+import { compileExpression } from "./evaluators.js"
+import type { OrderByClause } from "../ir.js"
 import type { NamespacedAndKeyedStream, NamespacedRow } from "../../types.js"
 
 /**
@@ -8,19 +8,25 @@ import type { NamespacedAndKeyedStream, NamespacedRow } from "../../types.js"
  */
 export function processOrderBy(
   pipeline: NamespacedAndKeyedStream,
-  orderByClause: OrderBy
+  orderByClause: Array<OrderByClause>
 ): NamespacedAndKeyedStream {
+  // Pre-compile all order by expressions
+  const compiledOrderBy = orderByClause.map((clause) => ({
+    compiledExpression: compileExpression(clause.expression),
+    direction: clause.direction,
+  }))
+
   // Create a value extractor function for the orderBy operator
   const valueExtractor = (namespacedRow: NamespacedRow) => {
     if (orderByClause.length > 1) {
       // For multiple orderBy columns, create a composite key
-      return orderByClause.map((clause) =>
-        evaluateExpression(clause.expression, namespacedRow)
+      return compiledOrderBy.map((compiled) =>
+        compiled.compiledExpression(namespacedRow)
       )
     } else if (orderByClause.length === 1) {
       // For a single orderBy column, use the value directly
-      const clause = orderByClause[0]!
-      return evaluateExpression(clause.expression, namespacedRow)
+      const compiled = compiledOrderBy[0]!
+      return compiled.compiledExpression(namespacedRow)
     }
 
     // Default case - no ordering

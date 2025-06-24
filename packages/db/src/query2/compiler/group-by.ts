@@ -1,6 +1,6 @@
 import { filter, groupBy, groupByOperators, map } from "@electric-sql/d2mini"
 import { Func, Ref } from "../ir.js"
-import { evaluateExpression } from "./evaluators.js"
+import { compileExpression } from "./evaluators.js"
 import type { Agg, Expression, GroupBy, Having, Select } from "../ir.js"
 import type { NamespacedAndKeyedStream, NamespacedRow } from "../../types.js"
 
@@ -55,8 +55,7 @@ function validateAndCreateMapping(
 }
 
 /**
- * Processes the GROUP BY clause and optional HAVING clause
- * This function handles the entire SELECT clause for GROUP BY queries
+ * Processes the GROUP BY clause with optional HAVING and SELECT
  */
 export function processGroupBy(
   pipeline: NamespacedAndKeyedStream,
@@ -64,8 +63,78 @@ export function processGroupBy(
   havingClause?: Having,
   selectClause?: Select
 ): NamespacedAndKeyedStream {
-  // Validate and create mapping once at the beginning
+  // Handle empty GROUP BY (single-group aggregation)
+  if (groupByClause.length === 0) {
+    // For single-group aggregation, create a single group with all data
+    const aggregates: Record<string, any> = {}
+
+    if (selectClause) {
+      // Scan the SELECT clause for aggregate functions
+      for (const [alias, expr] of Object.entries(selectClause)) {
+        if (expr.type === `agg`) {
+          const aggExpr = expr
+          aggregates[alias] = getAggregateFunction(aggExpr)
+        }
+      }
+    }
+
+    // Use a constant key for single group
+    const keyExtractor = () => ({ __singleGroup: true })
+
+    // Apply the groupBy operator with single group
+    pipeline = pipeline.pipe(
+      groupBy(keyExtractor, aggregates)
+    ) as NamespacedAndKeyedStream
+
+    // Process the SELECT clause for single-group aggregation
+    if (selectClause) {
+      pipeline = pipeline.pipe(
+        map(([, aggregatedRow]) => {
+          const result: Record<string, any> = {}
+
+          // For single-group aggregation, just copy aggregate results
+          for (const [alias, expr] of Object.entries(selectClause)) {
+            if (expr.type === `agg`) {
+              result[alias] = aggregatedRow[alias]
+            } else {
+              // Non-aggregate expressions in single-group aggregation
+              // This is tricky - we need a representative row
+              // For now, just return null for non-aggregates
+              result[alias] = null
+            }
+          }
+
+          // Use a single key for the result
+          return [`single_group`, result] as [unknown, Record<string, any>]
+        })
+      )
+    }
+
+    // Apply HAVING clause if present
+    if (havingClause) {
+      const transformedHavingClause = transformHavingClause(
+        havingClause,
+        selectClause || {}
+      )
+      const compiledHaving = compileExpression(transformedHavingClause)
+
+      pipeline = pipeline.pipe(
+        filter(([, aggregatedRow]) => {
+          const namespacedRow = { result: aggregatedRow }
+          return compiledHaving(namespacedRow)
+        })
+      )
+    }
+
+    return pipeline
+  }
+
+  // Original multi-group logic...
+  // Validate and create mapping for non-aggregate expressions in SELECT
   const mapping = validateAndCreateMapping(groupByClause, selectClause)
+
+  // Pre-compile groupBy expressions
+  const compiledGroupByExpressions = groupByClause.map(compileExpression)
 
   // Create a key extractor function using simple __key_X format
   const keyExtractor = ([, namespacedRow]: [string, NamespacedRow]) => {
@@ -73,8 +142,8 @@ export function processGroupBy(
 
     // Use simple __key_X format for each groupBy expression
     for (let i = 0; i < groupByClause.length; i++) {
-      const expr = groupByClause[i]!
-      const value = evaluateExpression(expr, namespacedRow)
+      const compiledExpr = compiledGroupByExpressions[i]!
+      const value = compiledExpr(namespacedRow)
       key[`__key_${i}`] = value
     }
 
@@ -138,15 +207,16 @@ export function processGroupBy(
 
   // Apply HAVING clause if present
   if (havingClause) {
+    const transformedHavingClause = transformHavingClause(
+      havingClause,
+      selectClause || {}
+    )
+    const compiledHaving = compileExpression(transformedHavingClause)
+
     pipeline = pipeline.pipe(
       filter(([, aggregatedRow]) => {
-        // Transform the HAVING clause to replace Agg expressions with direct references
-        const transformedHavingClause = transformHavingClause(
-          havingClause,
-          selectClause || {}
-        )
         const namespacedRow = { result: aggregatedRow }
-        return evaluateExpression(transformedHavingClause, namespacedRow)
+        return compiledHaving(namespacedRow)
       })
     )
   }
@@ -196,9 +266,12 @@ function expressionsEqual(expr1: any, expr2: any): boolean {
  * Helper function to get an aggregate function based on the Agg expression
  */
 function getAggregateFunction(aggExpr: Agg) {
+  // Pre-compile the value extractor expression
+  const compiledExpr = compileExpression(aggExpr.args[0]!)
+
   // Create a value extractor function for the expression to aggregate
   const valueExtractor = ([, namespacedRow]: [string, NamespacedRow]) => {
-    const value = evaluateExpression(aggExpr.args[0]!, namespacedRow)
+    const value = compiledExpr(namespacedRow)
     // Ensure we return a number for numeric aggregate functions
     return typeof value === `number` ? value : value != null ? Number(value) : 0
   }
