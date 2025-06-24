@@ -66,12 +66,12 @@ describe(`Query2 Compiler`, () => {
       const collection = messages[0]!
       expect(collection.getInner()).toHaveLength(4)
 
-      // Check the structure of the results - should be the raw user objects
+      // Check the structure of the results - should be the raw user objects in tuple format
       const results = collection.getInner().map(([data]) => data)
-      expect(results).toContainEqual([1, sampleUsers[0]])
-      expect(results).toContainEqual([2, sampleUsers[1]])
-      expect(results).toContainEqual([3, sampleUsers[2]])
-      expect(results).toContainEqual([4, sampleUsers[3]])
+      expect(results).toContainEqual([1, [sampleUsers[0], undefined]])
+      expect(results).toContainEqual([2, [sampleUsers[1], undefined]])
+      expect(results).toContainEqual([3, [sampleUsers[2], undefined]])
+      expect(results).toContainEqual([4, [sampleUsers[3], undefined]])
     })
 
     test(`compiles a simple SELECT query`, () => {
@@ -112,26 +112,33 @@ describe(`Query2 Compiler`, () => {
 
       expect(results).toContainEqual([
         1,
-        {
-          id: 1,
-          name: `Alice`,
-          age: 25,
-        },
+        [
+          {
+            id: 1,
+            name: `Alice`,
+            age: 25,
+          },
+          undefined,
+        ],
       ])
 
       expect(results).toContainEqual([
         2,
-        {
-          id: 2,
-          name: `Bob`,
-          age: 19,
-        },
+        [
+          {
+            id: 2,
+            name: `Bob`,
+            age: 19,
+          },
+          undefined,
+        ],
       ])
 
       // Check that all users are included and have the correct structure
       expect(results).toHaveLength(4)
-      results.forEach(([_key, result]) => {
+      results.forEach(([_key, [result, orderByIndex]]) => {
         expect(Object.keys(result).sort()).toEqual([`id`, `name`, `age`].sort())
+        expect(orderByIndex).toBeUndefined()
       })
     })
 
@@ -176,12 +183,15 @@ describe(`Query2 Compiler`, () => {
       expect(results).toHaveLength(3) // Alice, Charlie, Dave
 
       // Check that all results have age > 20
-      results.forEach(([_key, result]) => {
+      results.forEach(([_key, [result, orderByIndex]]) => {
         expect(result.age).toBeGreaterThan(20)
+        expect(orderByIndex).toBeUndefined()
       })
 
       // Check that specific users are included
-      const includedIds = results.map(([_key, r]) => r.id).sort()
+      const includedIds = results
+        .map(([_key, [r, _orderByIndex]]) => r.id)
+        .sort()
       expect(includedIds).toEqual([1, 3, 4]) // Alice, Charlie, Dave
     })
 
@@ -228,14 +238,17 @@ describe(`Query2 Compiler`, () => {
       expect(results).toHaveLength(2) // Alice, Dave
 
       // Check that all results meet the criteria
-      results.forEach(([_key, result]) => {
+      results.forEach(([_key, [result, orderByIndex]]) => {
         const originalUser = sampleUsers.find((u) => u.id === result.id)!
         expect(originalUser.age).toBeGreaterThan(20)
         expect(originalUser.active).toBe(true)
+        expect(orderByIndex).toBeUndefined()
       })
 
       // Check that specific users are included
-      const includedIds = results.map(([_key, r]) => r.id).sort()
+      const includedIds = results
+        .map(([_key, [r, _orderByIndex]]) => r.id)
+        .sort()
       expect(includedIds).toEqual([1, 4]) // Alice, Dave
     })
   })

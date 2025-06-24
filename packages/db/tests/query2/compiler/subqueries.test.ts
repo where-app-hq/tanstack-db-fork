@@ -189,7 +189,7 @@ describe(`Query2 Subqueries`, () => {
       graph.run()
 
       // Check results - should only include issues from project 1
-      const results = messages[0]!.getInner().map(([data]) => data[1])
+      const results = messages[0]!.getInner().map(([data]) => data[1][0])
       expect(results).toHaveLength(4) // Issues 1, 2, 3, 5 are from project 1
 
       results.forEach((result) => {
@@ -285,7 +285,7 @@ describe(`Query2 Subqueries`, () => {
       graph.run()
 
       // Check results - should only include issues with active users
-      const results = messages[0]!.getInner().map(([data]) => data[1])
+      const results = messages[0]!.getInner().map(([data]) => data[1][0])
 
       // Alice (id: 1) and Bob (id: 2) are active, Charlie (id: 3) is inactive
       // Issues 1, 3 belong to Alice, Issues 2, 5 belong to Bob, Issue 4 belongs to Charlie
@@ -382,7 +382,7 @@ describe(`Query2 Subqueries`, () => {
       graph.run()
 
       // Check results
-      const results = messages[0]!.getInner().map(([data]) => data[1])
+      const results = messages[0]!.getInner().map(([data]) => data[1][0])
       expect(results.length).toBeGreaterThan(0) // At least one result
 
       // Check that we have aggregate results with count and avgDuration
