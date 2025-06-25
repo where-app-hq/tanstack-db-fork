@@ -21,9 +21,12 @@ describe(`LocalOnly Collection`, () => {
     }
 
     // Get the options with utilities
-    const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-      config
-    )
+    const options = localOnlyCollectionOptions<
+      TestItem,
+      never,
+      TestItem,
+      number
+    >(config)
 
     // Create collection with LocalOnly configuration
     collection = createCollection<TestItem, number, LocalOnlyCollectionUtils>(
@@ -241,9 +244,12 @@ describe(`LocalOnly Collection`, () => {
         // schema would go here in real usage
       }
 
-      const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-        config
-      )
+      const options = localOnlyCollectionOptions<
+        TestItem,
+        never,
+        TestItem,
+        number
+      >(config)
       const testCollection = createCollection<
         TestItem,
         number,
@@ -273,9 +279,12 @@ describe(`LocalOnly Collection`, () => {
         onInsert: onInsertSpy,
       }
 
-      const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-        config
-      )
+      const options = localOnlyCollectionOptions<
+        TestItem,
+        never,
+        TestItem,
+        number
+      >(config)
       const testCollection = createCollection<
         TestItem,
         number,
@@ -311,9 +320,12 @@ describe(`LocalOnly Collection`, () => {
         onUpdate: onUpdateSpy,
       }
 
-      const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-        config
-      )
+      const options = localOnlyCollectionOptions<
+        TestItem,
+        never,
+        TestItem,
+        number
+      >(config)
       const testCollection = createCollection<
         TestItem,
         number,
@@ -352,9 +364,12 @@ describe(`LocalOnly Collection`, () => {
         onDelete: onDeleteSpy,
       }
 
-      const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-        config
-      )
+      const options = localOnlyCollectionOptions<
+        TestItem,
+        never,
+        TestItem,
+        number
+      >(config)
       const testCollection = createCollection<
         TestItem,
         number,
@@ -389,9 +404,12 @@ describe(`LocalOnly Collection`, () => {
         // No custom callbacks provided
       }
 
-      const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-        config
-      )
+      const options = localOnlyCollectionOptions<
+        TestItem,
+        never,
+        TestItem,
+        number
+      >(config)
       const testCollection = createCollection<
         TestItem,
         number,
@@ -423,9 +441,12 @@ describe(`LocalOnly Collection`, () => {
         initialData: initialItems,
       }
 
-      const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-        config
-      )
+      const options = localOnlyCollectionOptions<
+        TestItem,
+        never,
+        TestItem,
+        number
+      >(config)
       const testCollection = createCollection<
         TestItem,
         number,
@@ -446,9 +467,12 @@ describe(`LocalOnly Collection`, () => {
         initialData: [],
       }
 
-      const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-        config
-      )
+      const options = localOnlyCollectionOptions<
+        TestItem,
+        never,
+        TestItem,
+        number
+      >(config)
       const testCollection = createCollection<
         TestItem,
         number,
@@ -465,9 +489,12 @@ describe(`LocalOnly Collection`, () => {
         getKey: (item: TestItem) => item.id,
       }
 
-      const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-        config
-      )
+      const options = localOnlyCollectionOptions<
+        TestItem,
+        never,
+        TestItem,
+        number
+      >(config)
       const testCollection = createCollection<
         TestItem,
         number,
@@ -487,9 +514,12 @@ describe(`LocalOnly Collection`, () => {
         initialData: initialItems,
       }
 
-      const options = localOnlyCollectionOptions<TestItem, never, TestItem>(
-        config
-      )
+      const options = localOnlyCollectionOptions<
+        TestItem,
+        never,
+        TestItem,
+        number
+      >(config)
       const testCollection = createCollection<
         TestItem,
         number,
