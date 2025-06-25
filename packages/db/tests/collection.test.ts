@@ -855,19 +855,11 @@ describe(`Collection with schema validation`, () => {
     type InsertParam = Parameters<typeof collection.insert>[0]
     expectTypeOf<InsertParam>().toEqualTypeOf<TodoInput>()
 
-    const exampleTask: Todo = {
-      id: `task-id-3`,
-      text: `task-3`,
-      completed: true,
-      createdAt: new Date(`2023-01-01T00:00:00Z`),
-      updatedAt: new Date(`2023-01-01T00:00:00Z`),
-    }
-
     const mutationFn = async () => {}
-    const tx = createTransaction({ mutationFn })
 
     // Minimal data
-    tx.mutate(() => collection.insert({ text: `task-1` }))
+    const tx1 = createTransaction({ mutationFn })
+    tx1.mutate(() => collection.insert({ text: `task-1` }))
 
     let insertedItems = Array.from(collection.state.values())
     expect(insertedItems).toHaveLength(1)
@@ -880,7 +872,8 @@ describe(`Collection with schema validation`, () => {
     expect(insertedItem.updatedAt).toBeInstanceOf(Date)
 
     // Partial data
-    tx.mutate(() => collection.insert({ text: `task-2`, completed: true }))
+    const tx2 = createTransaction({ mutationFn })
+    tx2.mutate(() => collection.insert({ text: `task-2`, completed: true }))
 
     insertedItems = Array.from(collection.state.values())
     expect(insertedItems).toHaveLength(2)
@@ -893,7 +886,16 @@ describe(`Collection with schema validation`, () => {
     expect(secondItem.updatedAt).toBeInstanceOf(Date)
 
     // All fields provided
-    tx.mutate(() => collection.insert(exampleTask))
+    const tx3 = createTransaction({ mutationFn })
+    const exampleTask: Todo = {
+      id: `task-id-3`,
+      text: `task-3`,
+      completed: true,
+      createdAt: new Date(`2023-01-01T00:00:00Z`),
+      updatedAt: new Date(`2023-01-01T00:00:00Z`),
+    }
+
+    tx3.mutate(() => collection.insert(exampleTask))
     insertedItems = Array.from(collection.state.values())
     expect(insertedItems).toHaveLength(3)
     const thirdItem = insertedItems[2]!
