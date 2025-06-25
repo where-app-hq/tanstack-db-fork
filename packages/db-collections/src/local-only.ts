@@ -101,44 +101,50 @@ export function localOnlyCollectionOptions<
   // Create the sync configuration with transaction confirmation capability
   const syncResult = createLocalOnlySync<ResolvedType, TKey>(initialData)
 
-  // Create wrapper handlers that confirm transactions + call user handlers
+  // Create wrapper handlers that call user handlers first, then confirm transactions
   const wrappedOnInsert = async (
     params: InsertMutationFnParams<ResolvedType>
   ) => {
-    // Synchronously confirm the transaction by looping through mutations
+    // Call user handler first if provided
+    let handlerResult
+    if (onInsert) {
+      handlerResult = (await onInsert(params)) ?? {}
+    }
+
+    // Then synchronously confirm the transaction by looping through mutations
     syncResult.confirmOperationsSync(params.transaction.mutations)
 
-    // Call user handler if provided
-    if (onInsert) {
-      const handlerResult = (await onInsert(params)) ?? {}
-      return handlerResult
-    }
+    return handlerResult
   }
 
   const wrappedOnUpdate = async (
     params: UpdateMutationFnParams<ResolvedType>
   ) => {
-    // Synchronously confirm the transaction by looping through mutations
+    // Call user handler first if provided
+    let handlerResult
+    if (onUpdate) {
+      handlerResult = (await onUpdate(params)) ?? {}
+    }
+
+    // Then synchronously confirm the transaction by looping through mutations
     syncResult.confirmOperationsSync(params.transaction.mutations)
 
-    // Call user handler if provided
-    if (onUpdate) {
-      const handlerResult = (await onUpdate(params)) ?? {}
-      return handlerResult
-    }
+    return handlerResult
   }
 
   const wrappedOnDelete = async (
     params: DeleteMutationFnParams<ResolvedType>
   ) => {
-    // Synchronously confirm the transaction by looping through mutations
+    // Call user handler first if provided
+    let handlerResult
+    if (onDelete) {
+      handlerResult = (await onDelete(params)) ?? {}
+    }
+
+    // Then synchronously confirm the transaction by looping through mutations
     syncResult.confirmOperationsSync(params.transaction.mutations)
 
-    // Call user handler if provided
-    if (onDelete) {
-      const handlerResult = (await onDelete(params)) ?? {}
-      return handlerResult
-    }
+    return handlerResult
   }
 
   return {
