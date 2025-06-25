@@ -193,9 +193,9 @@ describe(`LocalOnly Collection`, () => {
     expect(items).toHaveLength(2)
   })
 
-  describe(`Loopback sync behavior`, () => {
-    it(`should handle insert operations through loopback sync`, async () => {
-      // Insert an item - this should be handled automatically by the loopback sync
+  describe(`Pure optimistic behavior`, () => {
+    it(`should handle insert operations optimistically`, async () => {
+      // Insert an item - this works purely optimistically
       await collection.insert({ id: 1, name: `Test Item` })
 
       // The item should be available in the collection
@@ -203,11 +203,11 @@ describe(`LocalOnly Collection`, () => {
       expect(collection.get(1)).toEqual({ id: 1, name: `Test Item` })
     })
 
-    it(`should handle update operations through loopback sync`, async () => {
+    it(`should handle update operations optimistically`, async () => {
       // Insert an item first
       await collection.insert({ id: 1, name: `Test Item` })
 
-      // Update the item - this should be handled automatically by the loopback sync
+      // Update the item - this works purely optimistically
       await collection.update(1, (draft) => {
         draft.name = `Updated Item`
       })
@@ -216,12 +216,12 @@ describe(`LocalOnly Collection`, () => {
       expect(collection.get(1)).toEqual({ id: 1, name: `Updated Item` })
     })
 
-    it(`should handle delete operations through loopback sync`, async () => {
+    it(`should handle delete operations optimistically`, async () => {
       // Insert an item first
       await collection.insert({ id: 1, name: `Test Item` })
       expect(collection.has(1)).toBe(true)
 
-      // Delete the item - this should be handled automatically by the loopback sync
+      // Delete the item - this works purely optimistically
       await collection.delete(1)
 
       // The item should be removed from the collection
@@ -256,6 +256,144 @@ describe(`LocalOnly Collection`, () => {
     it(`should expose utils object (even if empty)`, () => {
       expect(collection.utils).toBeDefined()
       expect(typeof collection.utils).toBe(`object`)
+    })
+  })
+
+  describe(`Custom callbacks`, () => {
+    it(`should call custom onInsert callback when provided`, async () => {
+      const onInsertSpy = vi.fn()
+
+      const config = {
+        id: `test-custom-callbacks`,
+        getKey: (item: TestItem) => item.id,
+        onInsert: onInsertSpy,
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      await testCollection.insert({ id: 1, name: `Test Item` })
+
+      expect(onInsertSpy).toHaveBeenCalledTimes(1)
+      expect(onInsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transaction: expect.objectContaining({
+            mutations: expect.arrayContaining([
+              expect.objectContaining({
+                type: `insert`,
+                modified: { id: 1, name: `Test Item` },
+              }),
+            ]),
+          }),
+        })
+      )
+
+      // Collection should still work normally
+      expect(testCollection.get(1)).toEqual({ id: 1, name: `Test Item` })
+    })
+
+    it(`should call custom onUpdate callback when provided`, async () => {
+      const onUpdateSpy = vi.fn()
+
+      const config = {
+        id: `test-custom-update`,
+        getKey: (item: TestItem) => item.id,
+        onUpdate: onUpdateSpy,
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      await testCollection.insert({ id: 1, name: `Test Item` })
+      await testCollection.update(1, (draft) => {
+        draft.name = `Updated Item`
+      })
+
+      expect(onUpdateSpy).toHaveBeenCalledTimes(1)
+      expect(onUpdateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transaction: expect.objectContaining({
+            mutations: expect.arrayContaining([
+              expect.objectContaining({
+                type: `update`,
+                modified: { id: 1, name: `Updated Item` },
+              }),
+            ]),
+          }),
+        })
+      )
+
+      // Collection should still work normally
+      expect(testCollection.get(1)).toEqual({ id: 1, name: `Updated Item` })
+    })
+
+    it(`should call custom onDelete callback when provided`, async () => {
+      const onDeleteSpy = vi.fn()
+
+      const config = {
+        id: `test-custom-delete`,
+        getKey: (item: TestItem) => item.id,
+        onDelete: onDeleteSpy,
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      await testCollection.insert({ id: 1, name: `Test Item` })
+      await testCollection.delete(1)
+
+      expect(onDeleteSpy).toHaveBeenCalledTimes(1)
+      expect(onDeleteSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transaction: expect.objectContaining({
+            mutations: expect.arrayContaining([
+              expect.objectContaining({
+                type: `delete`,
+                original: { id: 1, name: `Test Item` },
+              }),
+            ]),
+          }),
+        })
+      )
+
+      // Collection should still work normally
+      expect(testCollection.has(1)).toBe(false)
+    })
+
+    it(`should work without custom callbacks`, async () => {
+      const config = {
+        id: `test-no-callbacks`,
+        getKey: (item: TestItem) => item.id,
+        // No custom callbacks provided
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      // Should work normally without callbacks
+      await testCollection.insert({ id: 1, name: `Test Item` })
+      await testCollection.update(1, (draft) => {
+        draft.name = `Updated Item`
+      })
+      await testCollection.delete(1)
+
+      expect(testCollection.has(1)).toBe(false)
     })
   })
 

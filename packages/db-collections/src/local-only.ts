@@ -31,7 +31,6 @@ export interface LocalOnlyCollectionConfig<
 > {
   /**
    * Standard Collection configuration properties
-   * Note: onInsert, onUpdate, onDelete are not exposed as they are handled internally by the loopback sync
    */
   id?: string
   schema?: TSchema
@@ -42,6 +41,33 @@ export interface LocalOnlyCollectionConfig<
    * This data will be applied during the initial sync process
    */
   initialData?: Array<ResolveType<TExplicit, TSchema, TFallback>>
+
+  /**
+   * Optional asynchronous handler function called after an insert operation
+   * @param params Object containing transaction and mutation information
+   * @returns Promise resolving to any value
+   */
+  onInsert?: (
+    params: InsertMutationFnParams<ResolveType<TExplicit, TSchema, TFallback>>
+  ) => Promise<any>
+
+  /**
+   * Optional asynchronous handler function called after an update operation
+   * @param params Object containing transaction and mutation information
+   * @returns Promise resolving to any value
+   */
+  onUpdate?: (
+    params: UpdateMutationFnParams<ResolveType<TExplicit, TSchema, TFallback>>
+  ) => Promise<any>
+
+  /**
+   * Optional asynchronous handler function called after a delete operation
+   * @param params Object containing transaction and mutation information
+   * @returns Promise resolving to any value
+   */
+  onDelete?: (
+    params: DeleteMutationFnParams<ResolveType<TExplicit, TSchema, TFallback>>
+  ) => Promise<any>
 }
 
 /**
@@ -65,50 +91,82 @@ export function localOnlyCollectionOptions<
   TSchema extends StandardSchemaV1 = never,
   TFallback extends Record<string, unknown> = Record<string, unknown>,
 >(config: LocalOnlyCollectionConfig<TExplicit, TSchema, TFallback>) {
-  const { initialData, ...restConfig } = config
+  type ResolvedType = ResolveType<TExplicit, TSchema, TFallback>
 
-  const syncConfig = createLocalOnlySync<
-    ResolveType<TExplicit, TSchema, TFallback>,
-    ReturnType<typeof config.getKey>
-  >(initialData)
+  const { initialData, onInsert, onUpdate, onDelete, ...restConfig } = config
+
+  // Create the sync configuration with transaction confirmation capability
+  const syncResult = createLocalOnlySync<ResolvedType>(initialData)
+
+  // Create wrapper handlers that confirm transactions + call user handlers
+  const wrappedOnInsert = async (
+    params: InsertMutationFnParams<ResolvedType>
+  ) => {
+    // Synchronously confirm the transaction by looping through mutations
+    syncResult.confirmOperationsSync(params.transaction.mutations)
+
+    // Call user handler if provided
+    if (onInsert) {
+      const handlerResult = (await onInsert(params)) ?? {}
+      return handlerResult
+    }
+  }
+
+  const wrappedOnUpdate = async (
+    params: UpdateMutationFnParams<ResolvedType>
+  ) => {
+    // Synchronously confirm the transaction by looping through mutations
+    syncResult.confirmOperationsSync(params.transaction.mutations)
+
+    // Call user handler if provided
+    if (onUpdate) {
+      const handlerResult = (await onUpdate(params)) ?? {}
+      return handlerResult
+    }
+  }
+
+  const wrappedOnDelete = async (
+    params: DeleteMutationFnParams<ResolvedType>
+  ) => {
+    // Synchronously confirm the transaction by looping through mutations
+    syncResult.confirmOperationsSync(params.transaction.mutations)
+
+    // Call user handler if provided
+    if (onDelete) {
+      const handlerResult = (await onDelete(params)) ?? {}
+      return handlerResult
+    }
+  }
 
   return {
     ...restConfig,
-    sync: syncConfig.sync,
-    onInsert: syncConfig.onInsert,
-    onUpdate: syncConfig.onUpdate,
-    onDelete: syncConfig.onDelete,
+    sync: syncResult.sync,
+    onInsert: wrappedOnInsert,
+    onUpdate: wrappedOnUpdate,
+    onDelete: wrappedOnDelete,
     utils: {} as LocalOnlyCollectionUtils,
   }
 }
 
 /**
- * Internal function to create Local-only sync configuration
- * This creates a loopback sync that immediately persists all optimistic changes
+ * Internal function to create Local-only sync configuration with transaction confirmation
+ * This captures the sync functions and provides synchronous confirmation of operations
  */
-function createLocalOnlySync<
-  T extends object,
-  TKey extends string | number = string | number,
->(initialData?: Array<T>) {
-  // Store the sync functions so handlers can write back to the collection
+function createLocalOnlySync<T extends object>(initialData?: Array<T>) {
+  // Capture sync functions for transaction confirmation
   let syncBegin: (() => void) | null = null
   let syncWrite: ((message: { type: OperationType; value: T }) => void) | null =
     null
   let syncCommit: (() => void) | null = null
 
-  const sync: SyncConfig<T, TKey> = {
-    sync: (params: Parameters<SyncConfig<T, TKey>[`sync`]>[0]) => {
+  const sync: SyncConfig<T> = {
+    sync: (params) => {
       const { begin, write, commit } = params
 
-      // Capture the sync functions for use by the persistence handlers
+      // Capture sync functions for later use by confirmOperationsSync
       syncBegin = begin
       syncWrite = write
       syncCommit = commit
-
-      // Initialize the collection with an empty committed state
-      // This ensures the collection is ready to receive operations
-      begin()
-      commit()
 
       // Apply initial data if provided
       if (initialData && initialData.length > 0) {
@@ -122,70 +180,28 @@ function createLocalOnlySync<
         commit()
       }
 
-      // For localOnly collections, we don't need to set up any external subscriptions
-      // All changes will be handled optimistically and persist immediately since
-      // there's no external sync source to worry about
-
-      // Return an empty unsubscribe function since there's nothing to clean up
+      // Return empty unsubscribe function - no ongoing sync needed
       return () => {}
     },
-
-    /**
-     * Get the sync metadata for operations (empty for local-only)
-     * @returns Empty record since there's no external sync
-     */
-    getSyncMetadata: (): Record<string, unknown> => ({}),
+    getSyncMetadata: () => ({}),
   }
 
-  // Create persistence handlers that write back through the sync interface
-  const onInsert = async (params: InsertMutationFnParams<T>): Promise<void> => {
+  /**
+   * Synchronously confirms optimistic operations by immediately writing through sync
+   * This loops through transaction mutations and applies them to move from optimistic to synced state
+   */
+  const confirmOperationsSync = (mutations: Array<any>) => {
     if (!syncBegin || !syncWrite || !syncCommit) {
-      throw new Error(`LocalOnly sync not initialized`)
+      return // Sync not initialized yet, which is fine
     }
 
-    // Write each inserted item back through the sync interface
+    // Immediately write back through sync interface
     syncBegin()
-    params.transaction.mutations.forEach((mutation) => {
-      if (mutation.type === `insert` && syncWrite) {
+    mutations.forEach((mutation) => {
+      if (syncWrite) {
         syncWrite({
-          type: `insert`,
+          type: mutation.type,
           value: mutation.modified,
-        })
-      }
-    })
-    syncCommit()
-  }
-
-  const onUpdate = async (params: UpdateMutationFnParams<T>): Promise<void> => {
-    if (!syncBegin || !syncWrite || !syncCommit) {
-      throw new Error(`LocalOnly sync not initialized`)
-    }
-
-    // Write each updated item back through the sync interface
-    syncBegin()
-    params.transaction.mutations.forEach((mutation) => {
-      if (mutation.type === `update` && syncWrite) {
-        syncWrite({
-          type: `update`,
-          value: mutation.modified,
-        })
-      }
-    })
-    syncCommit()
-  }
-
-  const onDelete = async (params: DeleteMutationFnParams<T>): Promise<void> => {
-    if (!syncBegin || !syncWrite || !syncCommit) {
-      throw new Error(`LocalOnly sync not initialized`)
-    }
-
-    // Write each deleted item back through the sync interface
-    syncBegin()
-    params.transaction.mutations.forEach((mutation) => {
-      if (mutation.type === `delete` && syncWrite) {
-        syncWrite({
-          type: `delete`,
-          value: mutation.original as T,
         })
       }
     })
@@ -194,8 +210,6 @@ function createLocalOnlySync<
 
   return {
     sync,
-    onInsert,
-    onUpdate,
-    onDelete,
+    confirmOperationsSync,
   }
 }
