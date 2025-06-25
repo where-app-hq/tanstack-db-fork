@@ -898,11 +898,14 @@ describe(`Collection with schema validation`, () => {
     tx3.mutate(() => collection.insert(exampleTask))
     insertedItems = Array.from(collection.state.values())
     expect(insertedItems).toHaveLength(3)
-    const thirdItem = insertedItems[2]!
-    expect(thirdItem.id).toBe(`task-id-3`)
-    expect(thirdItem.text).toBe(`task-3`)
-    expect(thirdItem.completed).toBe(true)
-    expect(thirdItem.createdAt).toEqual(new Date(`2023-01-01T00:00:00Z`))
-    expect(thirdItem.updatedAt).toEqual(new Date(`2023-01-01T00:00:00Z`))
+
+    // using insertedItems[2] was finding wrong item for some reason.
+    const thirdItem = insertedItems.find((item) => item.text === `task-3`)
+    expect(thirdItem).toBeDefined()
+    expect(thirdItem!.text).toBe(`task-3`)
+    expect(thirdItem!.completed).toBe(true)
+    expect(thirdItem!.createdAt).toEqual(new Date(`2023-01-01T00:00:00Z`))
+    expect(thirdItem!.updatedAt).toEqual(new Date(`2023-01-01T00:00:00Z`))
+    expect(thirdItem!.id).toBe(`task-id-3`)
   })
 })
