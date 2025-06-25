@@ -199,21 +199,21 @@ describe(`LocalOnly Collection`, () => {
   })
 
   describe(`Pure optimistic behavior`, () => {
-    it(`should handle insert operations optimistically`, async () => {
+    it(`should handle insert operations optimistically`, () => {
       // Insert an item - this works purely optimistically
-      await collection.insert({ id: 1, name: `Test Item` })
+      collection.insert({ id: 1, name: `Test Item` })
 
       // The item should be available in the collection
       expect(collection.has(1)).toBe(true)
       expect(collection.get(1)).toEqual({ id: 1, name: `Test Item` })
     })
 
-    it(`should handle update operations optimistically`, async () => {
+    it(`should handle update operations optimistically`, () => {
       // Insert an item first
-      await collection.insert({ id: 1, name: `Test Item` })
+      collection.insert({ id: 1, name: `Test Item` })
 
       // Update the item - this works purely optimistically
-      await collection.update(1, (draft) => {
+      collection.update(1, (draft) => {
         draft.name = `Updated Item`
       })
 
@@ -221,13 +221,13 @@ describe(`LocalOnly Collection`, () => {
       expect(collection.get(1)).toEqual({ id: 1, name: `Updated Item` })
     })
 
-    it(`should handle delete operations optimistically`, async () => {
+    it(`should handle delete operations optimistically`, () => {
       // Insert an item first
-      await collection.insert({ id: 1, name: `Test Item` })
+      collection.insert({ id: 1, name: `Test Item` })
       expect(collection.has(1)).toBe(true)
 
       // Delete the item - this works purely optimistically
-      await collection.delete(1)
+      collection.delete(1)
 
       // The item should be removed from the collection
       expect(collection.has(1)).toBe(false)
@@ -238,23 +238,12 @@ describe(`LocalOnly Collection`, () => {
     it(`should work with schema configuration`, () => {
       // This tests that the type system works correctly with schemas
       // In a real implementation, you would provide a schema for validation
-      const config = {
-        id: `test-schema`,
-        getKey: (item: TestItem) => item.id,
-        // schema would go here in real usage
-      }
-
-      const options = localOnlyCollectionOptions<
-        TestItem,
-        never,
-        TestItem,
-        number
-      >(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
+      const testCollection = createCollection(
+        localOnlyCollectionOptions({
+          id: `test-schema`,
+          getKey: (item: TestItem) => item.id,
+        })
+      )
 
       // Basic operations should still work
       testCollection.insert({ id: 1, name: `Test with Schema` })
@@ -270,28 +259,18 @@ describe(`LocalOnly Collection`, () => {
   })
 
   describe(`Custom callbacks`, () => {
-    it(`should call custom onInsert callback when provided`, async () => {
+    it(`should call custom onInsert callback when provided`, () => {
       const onInsertSpy = vi.fn()
 
-      const config = {
-        id: `test-custom-callbacks`,
-        getKey: (item: TestItem) => item.id,
-        onInsert: onInsertSpy,
-      }
+      const testCollection = createCollection(
+        localOnlyCollectionOptions({
+          id: `test-custom-callbacks`,
+          getKey: (item: TestItem) => item.id,
+          onInsert: onInsertSpy,
+        })
+      )
 
-      const options = localOnlyCollectionOptions<
-        TestItem,
-        never,
-        TestItem,
-        number
-      >(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
-
-      await testCollection.insert({ id: 1, name: `Test Item` })
+      testCollection.insert({ id: 1, name: `Test Item` })
 
       expect(onInsertSpy).toHaveBeenCalledTimes(1)
       expect(onInsertSpy).toHaveBeenCalledWith(
@@ -311,29 +290,19 @@ describe(`LocalOnly Collection`, () => {
       expect(testCollection.get(1)).toEqual({ id: 1, name: `Test Item` })
     })
 
-    it(`should call custom onUpdate callback when provided`, async () => {
+    it(`should call custom onUpdate callback when provided`, () => {
       const onUpdateSpy = vi.fn()
 
-      const config = {
-        id: `test-custom-update`,
-        getKey: (item: TestItem) => item.id,
-        onUpdate: onUpdateSpy,
-      }
+      const testCollection = createCollection(
+        localOnlyCollectionOptions({
+          id: `test-custom-update`,
+          getKey: (item: TestItem) => item.id,
+          onUpdate: onUpdateSpy,
+        })
+      )
 
-      const options = localOnlyCollectionOptions<
-        TestItem,
-        never,
-        TestItem,
-        number
-      >(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
-
-      await testCollection.insert({ id: 1, name: `Test Item` })
-      await testCollection.update(1, (draft) => {
+      testCollection.insert({ id: 1, name: `Test Item` })
+      testCollection.update(1, (draft) => {
         draft.name = `Updated Item`
       })
 
@@ -355,29 +324,19 @@ describe(`LocalOnly Collection`, () => {
       expect(testCollection.get(1)).toEqual({ id: 1, name: `Updated Item` })
     })
 
-    it(`should call custom onDelete callback when provided`, async () => {
+    it(`should call custom onDelete callback when provided`, () => {
       const onDeleteSpy = vi.fn()
 
-      const config = {
-        id: `test-custom-delete`,
-        getKey: (item: TestItem) => item.id,
-        onDelete: onDeleteSpy,
-      }
+      const testCollection = createCollection(
+        localOnlyCollectionOptions({
+          id: `test-custom-delete`,
+          getKey: (item: TestItem) => item.id,
+          onDelete: onDeleteSpy,
+        })
+      )
 
-      const options = localOnlyCollectionOptions<
-        TestItem,
-        never,
-        TestItem,
-        number
-      >(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
-
-      await testCollection.insert({ id: 1, name: `Test Item` })
-      await testCollection.delete(1)
+      testCollection.insert({ id: 1, name: `Test Item` })
+      testCollection.delete(1)
 
       expect(onDeleteSpy).toHaveBeenCalledTimes(1)
       expect(onDeleteSpy).toHaveBeenCalledWith(
@@ -397,31 +356,20 @@ describe(`LocalOnly Collection`, () => {
       expect(testCollection.has(1)).toBe(false)
     })
 
-    it(`should work without custom callbacks`, async () => {
-      const config = {
-        id: `test-no-callbacks`,
-        getKey: (item: TestItem) => item.id,
-        // No custom callbacks provided
-      }
-
-      const options = localOnlyCollectionOptions<
-        TestItem,
-        never,
-        TestItem,
-        number
-      >(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
+    it(`should work without custom callbacks`, () => {
+      const testCollection = createCollection(
+        localOnlyCollectionOptions({
+          id: `test-no-callbacks`,
+          getKey: (item: TestItem) => item.id,
+        })
+      )
 
       // Should work normally without callbacks
-      await testCollection.insert({ id: 1, name: `Test Item` })
-      await testCollection.update(1, (draft) => {
+      testCollection.insert({ id: 1, name: `Test Item` })
+      testCollection.update(1, (draft) => {
         draft.name = `Updated Item`
       })
-      await testCollection.delete(1)
+      testCollection.delete(1)
 
       expect(testCollection.has(1)).toBe(false)
     })
@@ -435,23 +383,13 @@ describe(`LocalOnly Collection`, () => {
         { id: 30, name: `Initial Item 3` },
       ]
 
-      const config = {
-        id: `test-initial-data`,
-        getKey: (item: TestItem) => item.id,
-        initialData: initialItems,
-      }
-
-      const options = localOnlyCollectionOptions<
-        TestItem,
-        never,
-        TestItem,
-        number
-      >(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
+      const testCollection = createCollection(
+        localOnlyCollectionOptions({
+          id: `test-initial-data`,
+          getKey: (item: TestItem) => item.id,
+          initialData: initialItems,
+        })
+      )
 
       // Collection should be populated with initial data
       expect(testCollection.size).toBe(3)
@@ -461,77 +399,47 @@ describe(`LocalOnly Collection`, () => {
     })
 
     it(`should work with empty initial data array`, () => {
-      const config = {
-        id: `test-empty-initial-data`,
-        getKey: (item: TestItem) => item.id,
-        initialData: [],
-      }
-
-      const options = localOnlyCollectionOptions<
-        TestItem,
-        never,
-        TestItem,
-        number
-      >(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
+      const testCollection = createCollection(
+        localOnlyCollectionOptions({
+          id: `test-empty-initial-data`,
+          getKey: (item: TestItem) => item.id,
+          initialData: [],
+        })
+      )
 
       // Collection should be empty
       expect(testCollection.size).toBe(0)
     })
 
     it(`should work without initial data property`, () => {
-      const config = {
-        id: `test-no-initial-data`,
-        getKey: (item: TestItem) => item.id,
-      }
-
-      const options = localOnlyCollectionOptions<
-        TestItem,
-        never,
-        TestItem,
-        number
-      >(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
+      const testCollection = createCollection(
+        localOnlyCollectionOptions({
+          id: `test-no-initial-data`,
+          getKey: (item: TestItem) => item.id,
+        })
+      )
 
       // Collection should be empty
       expect(testCollection.size).toBe(0)
     })
 
-    it(`should allow adding more items after initial data`, async () => {
+    it(`should allow adding more items after initial data`, () => {
       const initialItems: Array<TestItem> = [{ id: 100, name: `Initial Item` }]
 
-      const config = {
-        id: `test-initial-plus-more`,
-        getKey: (item: TestItem) => item.id,
-        initialData: initialItems,
-      }
-
-      const options = localOnlyCollectionOptions<
-        TestItem,
-        never,
-        TestItem,
-        number
-      >(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
+      const testCollection = createCollection(
+        localOnlyCollectionOptions({
+          id: `test-initial-plus-more`,
+          getKey: (item: TestItem) => item.id,
+          initialData: initialItems,
+        })
+      )
 
       // Should start with initial data
       expect(testCollection.size).toBe(1)
       expect(testCollection.get(100)).toEqual({ id: 100, name: `Initial Item` })
 
       // Should be able to add more items
-      await testCollection.insert({ id: 200, name: `Added Item` })
+      testCollection.insert({ id: 200, name: `Added Item` })
 
       expect(testCollection.size).toBe(2)
       expect(testCollection.get(100)).toEqual({ id: 100, name: `Initial Item` })
