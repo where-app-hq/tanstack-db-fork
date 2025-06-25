@@ -34,15 +34,23 @@ interface Todo {
   completed: boolean
 }
 
+// Create with optional initial data
 const todos = createCollection({
   ...localOnlyCollectionOptions<Todo>({
     getKey: (todo) => todo.id,
+    initialData: [
+      { id: 1, title: "Buy milk", completed: false },
+      { id: 2, title: "Walk dog", completed: true },
+    ],
   }),
 })
 
+// Collection starts with initial data
+console.log(todos.size) // 2
+
 // All operations work automatically with loopback sync
 // Insert items
-await todos.insert({ id: 1, title: "Buy milk", completed: false })
+await todos.insert({ id: 3, title: "New item", completed: false })
 
 // Update items  
 await todos.update(1, (draft) => {
@@ -50,7 +58,7 @@ await todos.update(1, (draft) => {
 })
 
 // Delete items
-await todos.delete(1)
+await todos.delete(2)
 ```
 
 #### Features
@@ -63,6 +71,7 @@ await todos.delete(1)
 - ✅ All Collection utility methods
 - ✅ Schema validation support
 - ✅ True loopback sync (mutations automatically write back via sync interface)
+- ✅ Optional initial data population
 - ⚠️ Sequential mixed operations (1 edge case)
 
 The localOnly collection implements a true loopback sync where all mutations automatically write back to the collection through the sync interface. Users don't need to provide onInsert/onUpdate/onDelete handlers - everything is handled internally by the loopback mechanism.

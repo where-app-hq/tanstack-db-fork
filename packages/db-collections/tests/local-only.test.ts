@@ -258,4 +258,96 @@ describe(`LocalOnly Collection`, () => {
       expect(typeof collection.utils).toBe(`object`)
     })
   })
+
+  describe(`Initial data`, () => {
+    it(`should populate collection with initial data on creation`, () => {
+      const initialItems: Array<TestItem> = [
+        { id: 10, name: `Initial Item 1` },
+        { id: 20, name: `Initial Item 2` },
+        { id: 30, name: `Initial Item 3` },
+      ]
+
+      const config = {
+        id: `test-initial-data`,
+        getKey: (item: TestItem) => item.id,
+        initialData: initialItems,
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      // Collection should be populated with initial data
+      expect(testCollection.size).toBe(3)
+      expect(testCollection.get(10)).toEqual({ id: 10, name: `Initial Item 1` })
+      expect(testCollection.get(20)).toEqual({ id: 20, name: `Initial Item 2` })
+      expect(testCollection.get(30)).toEqual({ id: 30, name: `Initial Item 3` })
+    })
+
+    it(`should work with empty initial data array`, () => {
+      const config = {
+        id: `test-empty-initial-data`,
+        getKey: (item: TestItem) => item.id,
+        initialData: [],
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      // Collection should be empty
+      expect(testCollection.size).toBe(0)
+    })
+
+    it(`should work without initial data property`, () => {
+      const config = {
+        id: `test-no-initial-data`,
+        getKey: (item: TestItem) => item.id,
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      // Collection should be empty
+      expect(testCollection.size).toBe(0)
+    })
+
+    it(`should allow adding more items after initial data`, async () => {
+      const initialItems: Array<TestItem> = [{ id: 100, name: `Initial Item` }]
+
+      const config = {
+        id: `test-initial-plus-more`,
+        getKey: (item: TestItem) => item.id,
+        initialData: initialItems,
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      // Should start with initial data
+      expect(testCollection.size).toBe(1)
+      expect(testCollection.get(100)).toEqual({ id: 100, name: `Initial Item` })
+
+      // Should be able to add more items
+      await testCollection.insert({ id: 200, name: `Added Item` })
+
+      expect(testCollection.size).toBe(2)
+      expect(testCollection.get(100)).toEqual({ id: 100, name: `Initial Item` })
+      expect(testCollection.get(200)).toEqual({ id: 200, name: `Added Item` })
+    })
+  })
 })

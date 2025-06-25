@@ -36,6 +36,12 @@ export interface LocalOnlyCollectionConfig<
   id?: string
   schema?: TSchema
   getKey: CollectionConfig<ResolveType<TExplicit, TSchema, TFallback>>[`getKey`]
+
+  /**
+   * Optional initial data to populate the collection with on creation
+   * This data will be applied during the initial sync process
+   */
+  initialData?: Array<ResolveType<TExplicit, TSchema, TFallback>>
 }
 
 /**
@@ -59,13 +65,15 @@ export function localOnlyCollectionOptions<
   TSchema extends StandardSchemaV1 = never,
   TFallback extends Record<string, unknown> = Record<string, unknown>,
 >(config: LocalOnlyCollectionConfig<TExplicit, TSchema, TFallback>) {
+  const { initialData, ...restConfig } = config
+
   const syncConfig = createLocalOnlySync<
     ResolveType<TExplicit, TSchema, TFallback>,
     ReturnType<typeof config.getKey>
-  >()
+  >(initialData)
 
   return {
-    ...config,
+    ...restConfig,
     sync: syncConfig.sync,
     onInsert: syncConfig.onInsert,
     onUpdate: syncConfig.onUpdate,
@@ -81,7 +89,7 @@ export function localOnlyCollectionOptions<
 function createLocalOnlySync<
   T extends object,
   TKey extends string | number = string | number,
->() {
+>(initialData?: Array<T>) {
   // Store the sync functions so handlers can write back to the collection
   let syncBegin: (() => void) | null = null
   let syncWrite: ((message: { type: OperationType; value: T }) => void) | null =
@@ -101,6 +109,18 @@ function createLocalOnlySync<
       // This ensures the collection is ready to receive operations
       begin()
       commit()
+
+      // Apply initial data if provided
+      if (initialData && initialData.length > 0) {
+        begin()
+        initialData.forEach((item) => {
+          write({
+            type: `insert`,
+            value: item,
+          })
+        })
+        commit()
+      }
 
       // For localOnly collections, we don't need to set up any external subscriptions
       // All changes will be handled optimistically and persist immediately since
