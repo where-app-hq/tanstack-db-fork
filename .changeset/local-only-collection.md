@@ -1,5 +1,5 @@
 ---
-"@tanstack/db-collections": minor
+"@tanstack/db-collections": patch
 ---
 
-Add localOnly collection type for in-memory collections with loopback sync
+Add localOnly collection type for in-memory collections with loopback sync.
