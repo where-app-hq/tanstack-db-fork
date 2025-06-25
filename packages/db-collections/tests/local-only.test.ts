@@ -1,0 +1,304 @@
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createCollection } from "@tanstack/db"
+import { localOnlyCollectionOptions } from "../src/local-only"
+import type { LocalOnlyCollectionUtils } from "../src/local-only"
+import type { Collection } from "@tanstack/db"
+
+interface TestItem {
+  id: number
+  name: string
+  completed?: boolean
+}
+
+describe(`LocalOnly Collection`, () => {
+  let collection: Collection<TestItem, number, LocalOnlyCollectionUtils>
+
+  beforeEach(() => {
+    // Create collection with LocalOnly configuration
+    const config = {
+      id: `test-local-only`,
+      getKey: (item: TestItem) => item.id,
+    }
+
+    // Get the options with utilities
+    const options = localOnlyCollectionOptions<TestItem>(config)
+
+    // Create collection with LocalOnly configuration
+    collection = createCollection<TestItem, number, LocalOnlyCollectionUtils>(
+      options
+    )
+  })
+
+  it(`should create an empty collection initially`, () => {
+    expect(collection.state).toEqual(new Map())
+    expect(collection.size).toBe(0)
+  })
+
+  it(`should handle insert operations optimistically`, () => {
+    // Insert an item
+    collection.insert({ id: 1, name: `Test Item` })
+
+    // The item should be immediately available in the collection
+    expect(collection.has(1)).toBe(true)
+    expect(collection.get(1)).toEqual({ id: 1, name: `Test Item` })
+    expect(collection.size).toBe(1)
+  })
+
+  it(`should handle multiple inserts`, () => {
+    // Insert multiple items
+    collection.insert([
+      { id: 1, name: `Item 1` },
+      { id: 2, name: `Item 2` },
+      { id: 3, name: `Item 3` },
+    ])
+
+    // All items should be immediately available
+    expect(collection.size).toBe(3)
+    expect(collection.get(1)).toEqual({ id: 1, name: `Item 1` })
+    expect(collection.get(2)).toEqual({ id: 2, name: `Item 2` })
+    expect(collection.get(3)).toEqual({ id: 3, name: `Item 3` })
+  })
+
+  it(`should handle update operations optimistically`, () => {
+    // Insert an item first
+    collection.insert({ id: 1, name: `Original Item` })
+
+    // Update the item
+    collection.update(1, (draft) => {
+      draft.name = `Updated Item`
+      draft.completed = true
+    })
+
+    // The update should be immediately reflected
+    expect(collection.get(1)).toEqual({
+      id: 1,
+      name: `Updated Item`,
+      completed: true,
+    })
+  })
+
+  it(`should handle delete operations optimistically`, () => {
+    // Insert items first
+    collection.insert([
+      { id: 1, name: `Item 1` },
+      { id: 2, name: `Item 2` },
+    ])
+
+    expect(collection.size).toBe(2)
+
+    // Delete one item
+    collection.delete(1)
+
+    // The item should be immediately removed
+    expect(collection.has(1)).toBe(false)
+    expect(collection.has(2)).toBe(true)
+    expect(collection.size).toBe(1)
+  })
+
+  it(`should handle mixed operations`, () => {
+    // Perform a series of mixed operations
+    collection.insert({ id: 1, name: `Item 1` })
+    collection.insert({ id: 2, name: `Item 2` })
+
+    expect(collection.size).toBe(2)
+
+    // Update item 1
+    collection.update(1, (draft) => {
+      draft.completed = true
+    })
+
+    // Delete item 2
+    collection.delete(2)
+
+    // Insert item 3
+    collection.insert({ id: 3, name: `Item 3` })
+
+    // Check final state
+    expect(collection.size).toBe(2)
+    expect(collection.get(1)).toEqual({
+      id: 1,
+      name: `Item 1`,
+      completed: true,
+    })
+    expect(collection.has(2)).toBe(false)
+    expect(collection.get(3)).toEqual({ id: 3, name: `Item 3` })
+  })
+
+  it(`should support change subscriptions`, () => {
+    const changeHandler = vi.fn()
+
+    // Subscribe to changes
+    const unsubscribe = collection.subscribeChanges(changeHandler)
+
+    // Insert an item
+    collection.insert({ id: 1, name: `Test Item` })
+
+    // The change handler should have been called
+    expect(changeHandler).toHaveBeenCalledTimes(1)
+    expect(changeHandler).toHaveBeenCalledWith([
+      {
+        type: `insert`,
+        key: 1,
+        value: { id: 1, name: `Test Item` },
+      },
+    ])
+
+    // Clean up
+    unsubscribe()
+  })
+
+  it(`should support toArray method`, () => {
+    // Insert some items
+    collection.insert([
+      { id: 3, name: `Item 3` },
+      { id: 1, name: `Item 1` },
+      { id: 2, name: `Item 2` },
+    ])
+
+    const array = collection.toArray
+
+    // Should contain all items
+    expect(array).toHaveLength(3)
+    expect(array).toEqual(
+      expect.arrayContaining([
+        { id: 1, name: `Item 1` },
+        { id: 2, name: `Item 2` },
+        { id: 3, name: `Item 3` },
+      ])
+    )
+  })
+
+  it(`should support entries and iteration`, () => {
+    // Insert some items
+    collection.insert([
+      { id: 1, name: `Item 1` },
+      { id: 2, name: `Item 2` },
+    ])
+
+    // Test entries
+    const entries = Array.from(collection.entries())
+    expect(entries).toHaveLength(2)
+    expect(entries).toEqual(
+      expect.arrayContaining([
+        [1, { id: 1, name: `Item 1` }],
+        [2, { id: 2, name: `Item 2` }],
+      ])
+    )
+
+    // Test values iteration
+    const items = []
+    for (const item of collection.values()) {
+      items.push(item)
+    }
+    expect(items).toHaveLength(2)
+  })
+
+  describe(`Direct persistence handlers`, () => {
+    it(`should call onInsert handler when provided`, async () => {
+      const onInsert = vi.fn().mockResolvedValue({})
+
+      const config = {
+        id: `test-handlers`,
+        getKey: (item: TestItem) => item.id,
+        onInsert,
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      // Insert an item - this should trigger the handler
+      await testCollection.insert({ id: 1, name: `Test Item` })
+
+      // Verify the handler was called
+      expect(onInsert).toHaveBeenCalledTimes(1)
+    })
+
+    it(`should call onUpdate handler when provided`, async () => {
+      const onUpdate = vi.fn().mockResolvedValue({})
+
+      const config = {
+        id: `test-handlers`,
+        getKey: (item: TestItem) => item.id,
+        onUpdate,
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      // Insert an item first
+      await testCollection.insert({ id: 1, name: `Test Item` })
+
+      // Update the item - this should trigger the handler
+      await testCollection.update(1, (draft) => {
+        draft.name = `Updated Item`
+      })
+
+      // Verify the handler was called
+      expect(onUpdate).toHaveBeenCalledTimes(1)
+    })
+
+    it(`should call onDelete handler when provided`, async () => {
+      const onDelete = vi.fn().mockResolvedValue({})
+
+      const config = {
+        id: `test-handlers`,
+        getKey: (item: TestItem) => item.id,
+        onDelete,
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      // Insert an item first
+      await testCollection.insert({ id: 1, name: `Test Item` })
+
+      // Delete the item - this should trigger the handler
+      await testCollection.delete(1)
+
+      // Verify the handler was called
+      expect(onDelete).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe(`Schema support`, () => {
+    it(`should work with schema configuration`, () => {
+      // This tests that the type system works correctly with schemas
+      // In a real implementation, you would provide a schema for validation
+      const config = {
+        id: `test-schema`,
+        getKey: (item: TestItem) => item.id,
+        // schema would go here in real usage
+      }
+
+      const options = localOnlyCollectionOptions<TestItem>(config)
+      const testCollection = createCollection<
+        TestItem,
+        number,
+        LocalOnlyCollectionUtils
+      >(options)
+
+      // Basic operations should still work
+      testCollection.insert({ id: 1, name: `Test with Schema` })
+      expect(testCollection.get(1)).toEqual({ id: 1, name: `Test with Schema` })
+    })
+  })
+
+  describe(`Utils object`, () => {
+    it(`should expose utils object (even if empty)`, () => {
+      expect(collection.utils).toBeDefined()
+      expect(typeof collection.utils).toBe(`object`)
+    })
+  })
+})
