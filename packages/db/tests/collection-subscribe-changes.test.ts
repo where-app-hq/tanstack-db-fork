@@ -633,7 +633,7 @@ describe(`Collection.subscribeChanges`, () => {
         },
       },
     })
-    const mutationFn = () => Promise.resolve()
+    const mutationFn = async () => {}
 
     // Subscribe to changes
     const unsubscribe = collection.subscribeChanges(callback, {
