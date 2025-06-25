@@ -193,82 +193,39 @@ describe(`LocalOnly Collection`, () => {
     expect(items).toHaveLength(2)
   })
 
-  describe(`Direct persistence handlers`, () => {
-    it(`should call onInsert handler when provided`, async () => {
-      const onInsert = vi.fn().mockResolvedValue({})
+  describe(`Loopback sync behavior`, () => {
+    it(`should handle insert operations through loopback sync`, async () => {
+      // Insert an item - this should be handled automatically by the loopback sync
+      await collection.insert({ id: 1, name: `Test Item` })
 
-      const config = {
-        id: `test-handlers`,
-        getKey: (item: TestItem) => item.id,
-        onInsert,
-      }
-
-      const options = localOnlyCollectionOptions<TestItem>(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
-
-      // Insert an item - this should trigger the handler
-      await testCollection.insert({ id: 1, name: `Test Item` })
-
-      // Verify the handler was called
-      expect(onInsert).toHaveBeenCalledTimes(1)
+      // The item should be available in the collection
+      expect(collection.has(1)).toBe(true)
+      expect(collection.get(1)).toEqual({ id: 1, name: `Test Item` })
     })
 
-    it(`should call onUpdate handler when provided`, async () => {
-      const onUpdate = vi.fn().mockResolvedValue({})
-
-      const config = {
-        id: `test-handlers`,
-        getKey: (item: TestItem) => item.id,
-        onUpdate,
-      }
-
-      const options = localOnlyCollectionOptions<TestItem>(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
-
+    it(`should handle update operations through loopback sync`, async () => {
       // Insert an item first
-      await testCollection.insert({ id: 1, name: `Test Item` })
+      await collection.insert({ id: 1, name: `Test Item` })
 
-      // Update the item - this should trigger the handler
-      await testCollection.update(1, (draft) => {
+      // Update the item - this should be handled automatically by the loopback sync
+      await collection.update(1, (draft) => {
         draft.name = `Updated Item`
       })
 
-      // Verify the handler was called
-      expect(onUpdate).toHaveBeenCalledTimes(1)
+      // The update should be reflected in the collection
+      expect(collection.get(1)).toEqual({ id: 1, name: `Updated Item` })
     })
 
-    it(`should call onDelete handler when provided`, async () => {
-      const onDelete = vi.fn().mockResolvedValue({})
-
-      const config = {
-        id: `test-handlers`,
-        getKey: (item: TestItem) => item.id,
-        onDelete,
-      }
-
-      const options = localOnlyCollectionOptions<TestItem>(config)
-      const testCollection = createCollection<
-        TestItem,
-        number,
-        LocalOnlyCollectionUtils
-      >(options)
-
+    it(`should handle delete operations through loopback sync`, async () => {
       // Insert an item first
-      await testCollection.insert({ id: 1, name: `Test Item` })
+      await collection.insert({ id: 1, name: `Test Item` })
+      expect(collection.has(1)).toBe(true)
 
-      // Delete the item - this should trigger the handler
-      await testCollection.delete(1)
+      // Delete the item - this should be handled automatically by the loopback sync
+      await collection.delete(1)
 
-      // Verify the handler was called
-      expect(onDelete).toHaveBeenCalledTimes(1)
+      // The item should be removed from the collection
+      expect(collection.has(1)).toBe(false)
     })
   })
 

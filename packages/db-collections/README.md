@@ -40,16 +40,17 @@ const todos = createCollection({
   }),
 })
 
+// All operations work automatically with loopback sync
 // Insert items
-todos.insert({ id: 1, title: "Buy milk", completed: false })
+await todos.insert({ id: 1, title: "Buy milk", completed: false })
 
-// Update items
-todos.update(1, (draft) => {
+// Update items  
+await todos.update(1, (draft) => {
   draft.completed = true
 })
 
 // Delete items
-todos.delete(1)
+await todos.delete(1)
 ```
 
 #### Features
@@ -57,10 +58,11 @@ todos.delete(1)
 - ✅ Single insert operations
 - ✅ Batch insert operations  
 - ✅ Update operations
+- ✅ Delete operations
 - ✅ Change subscriptions
 - ✅ All Collection utility methods
 - ✅ Schema validation support
-- ✅ Direct persistence handlers
-- ⚠️ Sequential individual operations (known limitation)
+- ✅ True loopback sync (mutations automatically write back via sync interface)
+- ⚠️ Sequential mixed operations (1 edge case)
 
-The localOnly collection provides a simple loopback sync configuration that allows all changes to work optimistically without requiring external sync sources.
+The localOnly collection implements a true loopback sync where all mutations automatically write back to the collection through the sync interface. Users don't need to provide onInsert/onUpdate/onDelete handlers - everything is handled internally by the loopback mechanism.
