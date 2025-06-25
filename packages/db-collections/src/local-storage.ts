@@ -255,6 +255,10 @@ export function localStorageCollectionOptions<
           validateJsonSerializable(mutation.modified, `insert`)
         })
 
+        // Call the user handler BEFORE persisting changes
+        const handlerResult = (await config.onInsert!(params)) ?? {}
+
+        // Only persist to storage if the handler succeeded
         // Load current data from storage
         const currentData = loadFromStorage(
           config.storageKey,
@@ -278,7 +282,6 @@ export function localStorageCollectionOptions<
         // Manually trigger local sync since storage events don't fire for current tab
         triggerLocalSync()
 
-        const handlerResult = (await config.onInsert!(params)) ?? {}
         return handlerResult
       }
     : undefined
@@ -290,6 +293,10 @@ export function localStorageCollectionOptions<
           validateJsonSerializable(mutation.modified, `update`)
         })
 
+        // Call the user handler BEFORE persisting changes
+        const handlerResult = (await config.onUpdate!(params)) ?? {}
+
+        // Only persist to storage if the handler succeeded
         // Load current data from storage
         const currentData = loadFromStorage(
           config.storageKey,
@@ -313,13 +320,16 @@ export function localStorageCollectionOptions<
         // Manually trigger local sync since storage events don't fire for current tab
         triggerLocalSync()
 
-        const handlerResult = (await config.onUpdate!(params)) ?? {}
         return handlerResult
       }
     : undefined
 
   const wrappedOnDelete = config.onDelete
     ? async (params: DeleteMutationFnParams<ResolvedType>) => {
+        // Call the user handler BEFORE persisting changes
+        const handlerResult = (await config.onDelete!(params)) ?? {}
+
+        // Only persist to storage if the handler succeeded
         // Load current data from storage
         const currentData = loadFromStorage(
           config.storageKey,
@@ -340,7 +350,6 @@ export function localStorageCollectionOptions<
         // Manually trigger local sync since storage events don't fire for current tab
         triggerLocalSync()
 
-        const handlerResult = (await config.onDelete!(params)) ?? {}
         return handlerResult
       }
     : undefined

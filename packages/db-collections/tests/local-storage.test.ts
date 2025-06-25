@@ -260,7 +260,7 @@ describe(`localStorage collection`, () => {
   })
 
   describe(`mutation handlers with storage operations`, () => {
-    it(`should perform insert operations and update storage`, () => {
+    it(`should perform insert operations and update storage`, async () => {
       const collection = createCollection(
         localStorageCollectionOptions<Todo>({
           storageKey: `todos`,
@@ -278,8 +278,10 @@ describe(`localStorage collection`, () => {
         createdAt: new Date(),
       }
 
-      // Insert a todo
-      collection.insert(todo)
+      // When a collection has mutation handlers, calling insert() automatically creates
+      // a transaction and calls the onInsert handler
+      const tx = collection.insert(todo)
+      await tx.isPersisted.promise
 
       // Check that it was saved to storage with version key structure
       const storedData = mockStorage.getItem(`todos`)
@@ -294,7 +296,7 @@ describe(`localStorage collection`, () => {
       expect(parsed[`1`].data.title).toBe(`Test Todo`)
     })
 
-    it(`should perform update operations and update storage`, () => {
+    it(`should perform update operations and update storage`, async () => {
       // Pre-populate storage
       const initialData = {
         "1": {
@@ -319,10 +321,11 @@ describe(`localStorage collection`, () => {
         })
       )
 
-      // Update the todo
-      collection.update(`1`, (draft) => {
+      // Update the todo - this automatically creates a transaction and calls onUpdate
+      const tx = collection.update(`1`, (draft) => {
         draft.title = `Updated Todo`
       })
+      await tx.isPersisted.promise
 
       // Check that it was updated in storage with a new version key
       const storedData = mockStorage.getItem(`todos`)
@@ -333,7 +336,7 @@ describe(`localStorage collection`, () => {
       expect(parsed[`1`].data.title).toBe(`Updated Todo`)
     })
 
-    it(`should perform delete operations and update storage`, () => {
+    it(`should perform delete operations and update storage`, async () => {
       // Pre-populate storage
       const initialData = {
         "1": {
@@ -358,8 +361,9 @@ describe(`localStorage collection`, () => {
         })
       )
 
-      // Delete the todo
-      collection.delete(`1`)
+      // Delete the todo - this automatically creates a transaction and calls onDelete
+      const tx = collection.delete(`1`)
+      await tx.isPersisted.promise
 
       // Check that it was removed from storage
       const storedData = mockStorage.getItem(`todos`)
