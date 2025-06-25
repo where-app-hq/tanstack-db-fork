@@ -942,7 +942,7 @@ export class CollectionImpl<
       const validatedData = this.validateData(item, `insert`)
 
       // Check if an item with this ID already exists in the collection
-      const key = this.getKeyFromItem(item)
+      const key = this.getKeyFromItem(validatedData)
       if (this.has(key)) {
         throw `Cannot insert document with ID "${key}" because it already exists in the collection`
       }
