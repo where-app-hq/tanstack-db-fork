@@ -96,7 +96,10 @@ export function localOnlyCollectionOptions<
   const { initialData, onInsert, onUpdate, onDelete, ...restConfig } = config
 
   // Create the sync configuration with transaction confirmation capability
-  const syncResult = createLocalOnlySync<ResolvedType>(initialData)
+  const syncResult = createLocalOnlySync<
+    ResolvedType,
+    ReturnType<typeof config.getKey>
+  >(initialData)
 
   // Create wrapper handlers that confirm transactions + call user handlers
   const wrappedOnInsert = async (
@@ -152,14 +155,17 @@ export function localOnlyCollectionOptions<
  * Internal function to create Local-only sync configuration with transaction confirmation
  * This captures the sync functions and provides synchronous confirmation of operations
  */
-function createLocalOnlySync<T extends object>(initialData?: Array<T>) {
+function createLocalOnlySync<
+  T extends object,
+  TKey extends string | number = string | number,
+>(initialData?: Array<T>) {
   // Capture sync functions for transaction confirmation
   let syncBegin: (() => void) | null = null
   let syncWrite: ((message: { type: OperationType; value: T }) => void) | null =
     null
   let syncCommit: (() => void) | null = null
 
-  const sync: SyncConfig<T> = {
+  const sync: SyncConfig<T, TKey> = {
     sync: (params) => {
       const { begin, write, commit } = params
 
