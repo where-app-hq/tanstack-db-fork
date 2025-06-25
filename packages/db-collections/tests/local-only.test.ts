@@ -15,22 +15,11 @@ describe(`LocalOnly Collection`, () => {
 
   beforeEach(() => {
     // Create collection with LocalOnly configuration
-    const config = {
-      id: `test-local-only`,
-      getKey: (item: TestItem) => item.id,
-    }
-
-    // Get the options with utilities
-    const options = localOnlyCollectionOptions<
-      TestItem,
-      never,
-      TestItem,
-      number
-    >(config)
-
-    // Create collection with LocalOnly configuration
-    collection = createCollection<TestItem, number, LocalOnlyCollectionUtils>(
-      options
+    collection = createCollection<TestItem, number>(
+      localOnlyCollectionOptions({
+        id: `test-local-only`,
+        getKey: (item: TestItem) => item.id,
+      })
     )
   })
 
