@@ -155,10 +155,9 @@ export function localOnlyCollectionOptions<
  * Internal function to create Local-only sync configuration with transaction confirmation
  * This captures the sync functions and provides synchronous confirmation of operations
  */
-function createLocalOnlySync<
-  T extends object,
-  TKey extends string | number = string | number,
->(initialData?: Array<T>) {
+function createLocalOnlySync<T extends object, TKey extends string | number>(
+  initialData?: Array<T>
+) {
   // Capture sync functions for transaction confirmation
   let syncBegin: (() => void) | null = null
   let syncWrite: ((message: { type: OperationType; value: T }) => void) | null =
