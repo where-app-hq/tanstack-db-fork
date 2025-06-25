@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, expectTypeOf, it, vi } from "vitest"
 import mitt from "mitt"
 import { z } from "zod"
 import { SchemaValidationError, createCollection } from "../src/collection"
@@ -821,5 +821,86 @@ describe(`Collection with schema validation`, () => {
         )
       }
     }
+  })
+
+  it(`should apply schema defaults on insert`, () => {
+    const todoSchema = z.object({
+      id: z
+        .string()
+        .default(() => `todo-${Math.random().toString(36).substr(2, 9)}`),
+      text: z.string().default(``),
+      completed: z.boolean().default(false),
+      createdAt: z.coerce.date().default(() => new Date()),
+      updatedAt: z.coerce.date().default(() => new Date()),
+    })
+
+    type Todo = z.infer<typeof todoSchema>
+
+    const collection = createCollection<Todo>({
+      id: `defaults-test`,
+      getKey: (item) => item.id,
+      sync: {
+        sync: ({ begin, commit }) => {
+          begin()
+          commit()
+        },
+      },
+      schema: todoSchema,
+    })
+
+    // Type test: should allow inserting input type (with missing fields that have defaults)
+    // Important: Input type is different from the output type (which is inferred using z.infer)
+    // For more details, @see https://github.com/colinhacks/zod/issues/4179#issuecomment-2811669261
+    type TodoInput = z.input<typeof todoSchema>
+    type InsertParam = Parameters<typeof collection.insert>[0]
+    expectTypeOf<InsertParam>().toEqualTypeOf<TodoInput>()
+
+    const exampleTask: Todo = {
+      id: `task-id-3`,
+      text: `task-3`,
+      completed: true,
+      createdAt: new Date(`2023-01-01T00:00:00Z`),
+      updatedAt: new Date(`2023-01-01T00:00:00Z`),
+    }
+
+    const mutationFn = async () => {}
+    const tx = createTransaction({ mutationFn })
+
+    // Minimal data
+    tx.mutate(() => collection.insert({ text: `task-1` }))
+
+    let insertedItems = Array.from(collection.state.values())
+    expect(insertedItems).toHaveLength(1)
+    const insertedItem = insertedItems[0]!
+    expect(insertedItem.text).toBe(`task-1`)
+    expect(insertedItem.completed).toBe(false)
+    expect(insertedItem.id).toBeDefined()
+    expect(typeof insertedItem.id).toBe(`string`)
+    expect(insertedItem.createdAt).toBeInstanceOf(Date)
+    expect(insertedItem.updatedAt).toBeInstanceOf(Date)
+
+    // Partial data
+    tx.mutate(() => collection.insert({ text: `task-2`, completed: true }))
+
+    insertedItems = Array.from(collection.state.values())
+    expect(insertedItems).toHaveLength(2)
+    const secondItem = insertedItems[1]!
+    expect(secondItem.text).toBe(`task-2`)
+    expect(secondItem.completed).toBe(true)
+    expect(secondItem.id).toBeDefined()
+    expect(typeof secondItem.id).toBe(`string`)
+    expect(secondItem.createdAt).toBeInstanceOf(Date)
+    expect(secondItem.updatedAt).toBeInstanceOf(Date)
+
+    // All fields provided
+    tx.mutate(() => collection.insert(exampleTask))
+    insertedItems = Array.from(collection.state.values())
+    expect(insertedItems).toHaveLength(3)
+    const thirdItem = insertedItems[2]!
+    expect(thirdItem.id).toBe(`task-id-3`)
+    expect(thirdItem.text).toBe(`task-3`)
+    expect(thirdItem.completed).toBe(true)
+    expect(thirdItem.createdAt).toEqual(new Date(`2023-01-01T00:00:00Z`))
+    expect(thirdItem.updatedAt).toEqual(new Date(`2023-01-01T00:00:00Z`))
   })
 })
