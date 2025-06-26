@@ -32,7 +32,8 @@ describe(`Electric Integration`, () => {
     string | number,
     ElectricCollectionUtils,
     StandardSchemaV1<unknown, unknown>,
-    Row<unknown>
+    Row,
+    Row
   >
   let subscriber: (messages: Array<Message<Row>>) => void
 
@@ -62,13 +63,7 @@ describe(`Electric Integration`, () => {
     const options = electricCollectionOptions(config)
 
     // Create collection with Electric configuration using the new utility exposure pattern
-    collection = createCollection<
-      Row,
-      string | number,
-      ElectricCollectionUtils,
-      StandardSchemaV1<unknown, unknown>,
-      Row<unknown>
-    >(options)
+    collection = createCollection(options)
   })
 
   it(`should handle incoming insert messages and commit on up-to-date`, () => {
