@@ -1,57 +1,91 @@
 import { useEffect, useMemo, useState } from "react"
-import { useStore } from "@tanstack/react-store"
-import { compileQuery, queryBuilder } from "@tanstack/db"
-import type {
-  Collection,
-  Context,
-  InitialQueryBuilder,
-  QueryBuilder,
-  ResultsFromContext,
-  Schema,
+import {
+  createLiveQueryCollection,
+  type Collection,
+  type Context,
+  type InitialQueryBuilder,
+  type QueryBuilder,
+  type GetResult,
+  type LiveQueryCollectionConfig,
 } from "@tanstack/db"
 
-export interface UseLiveQueryReturn<T extends object> {
-  state: Map<string | number, T>
-  data: Array<T>
-  collection: Collection<T>
+// Overload 1: Accept just the query function
+export function useLiveQuery<
+  TContext extends Context,
+>(
+  queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext>,
+  deps?: Array<unknown>
+): {
+  state: Map<string | number, GetResult<TContext>>
+  data: Array<GetResult<TContext>>
+  collection: Collection<GetResult<TContext>, string | number, {}>
 }
 
+// Overload 2: Accept config object
 export function useLiveQuery<
-  TResultContext extends Context<Schema> = Context<Schema>,
+  TContext extends Context,
 >(
-  queryFn: (
-    q: InitialQueryBuilder<Context<Schema>>
-  ) => QueryBuilder<TResultContext>,
+  config: LiveQueryCollectionConfig<TContext>,
+  deps?: Array<unknown>
+): {
+  state: Map<string | number, GetResult<TContext>>
+  data: Array<GetResult<TContext>>
+  collection: Collection<GetResult<TContext>, string | number, {}>
+}
+
+// Implementation - use function overloads to infer the actual collection type
+export function useLiveQuery(
+  configOrQuery: any,
   deps: Array<unknown> = []
-): UseLiveQueryReturn<ResultsFromContext<TResultContext>> {
-  const [restart, forceRestart] = useState(0)
-
-  const compiledQuery = useMemo(() => {
-    const query = queryFn(queryBuilder())
-    const compiled = compileQuery(query)
-    compiled.start()
-    return compiled
-  }, [...deps, restart])
-
-  const state = useStore(compiledQuery.results.asStoreMap())
-  const data = useStore(compiledQuery.results.asStoreArray())
-
-  // Clean up on unmount
-  useEffect(() => {
-    if (compiledQuery.state === `stopped`) {
-      forceRestart((count) => {
-        return (count += 1)
+) {
+  const collection = useMemo(() => {
+    // Ensure we always start sync for React hooks
+    if (typeof configOrQuery === 'function') {
+      return createLiveQueryCollection({ 
+        query: configOrQuery,
+        startSync: true 
+      })
+    } else {
+      return createLiveQueryCollection({ 
+        ...configOrQuery,
+        startSync: true 
       })
     }
+  }, [...deps])
 
-    return () => {
-      compiledQuery.stop()
+  // Infer types from the actual collection
+  type CollectionType = typeof collection extends Collection<infer T, any, any> ? T : never
+  type KeyType = typeof collection extends Collection<any, infer K, any> ? K : string | number
+
+  const [state, setState] = useState<Map<KeyType, CollectionType>>(() => 
+    new Map(collection.entries() as any)
+  )
+  const [data, setData] = useState<Array<CollectionType>>(() => 
+    Array.from(collection.values() as any)
+  )
+
+  useEffect(() => {
+    // Update initial state in case collection has data
+    setState(new Map(collection.entries() as any))
+    setData(Array.from(collection.values() as any))
+
+    // Subscribe to changes and update state
+    const unsubscribe = collection.subscribeChanges(() => {
+      setState(new Map(collection.entries() as any))
+      setData(Array.from(collection.values() as any))
+    })
+
+    // Preload the collection data if not already started
+    if (collection.status === 'idle') {
+      collection.preload().catch(console.error)
     }
-  }, [compiledQuery])
+
+    return unsubscribe
+  }, [collection])
 
   return {
     state,
     data,
-    collection: compiledQuery.results,
+    collection: collection as any,
   }
 }
