@@ -828,15 +828,15 @@ describe(`Collection with schema validation`, () => {
       id: z
         .string()
         .default(() => `todo-${Math.random().toString(36).substr(2, 9)}`),
-      text: z.string().default(``),
+      text: z.string(),
       completed: z.boolean().default(false),
       createdAt: z.coerce.date().default(() => new Date()),
       updatedAt: z.coerce.date().default(() => new Date()),
     })
 
-    type Todo = z.infer<typeof todoSchema>
-
-    const collection = createCollection<Todo>({
+    // NOTE: `createCollection<Todo>` breaks the schema type inference.
+    // We have to use only the schema, and not the type generic, like so:
+    const collection = createCollection({
       id: `defaults-test`,
       getKey: (item) => item.id,
       sync: {
@@ -853,7 +853,7 @@ describe(`Collection with schema validation`, () => {
     // For more details, @see https://github.com/colinhacks/zod/issues/4179#issuecomment-2811669261
     type TodoInput = z.input<typeof todoSchema>
     type InsertParam = Parameters<typeof collection.insert>[0]
-    expectTypeOf<InsertParam>().toEqualTypeOf<TodoInput>()
+    expectTypeOf<InsertParam>().toEqualTypeOf<TodoInput | Array<TodoInput>>()
 
     const mutationFn = async () => {}
 
@@ -887,15 +887,16 @@ describe(`Collection with schema validation`, () => {
 
     // All fields provided
     const tx3 = createTransaction({ mutationFn })
-    const exampleTask: Todo = {
-      id: `task-id-3`,
-      text: `task-3`,
-      completed: true,
-      createdAt: new Date(`2023-01-01T00:00:00Z`),
-      updatedAt: new Date(`2023-01-01T00:00:00Z`),
-    }
 
-    tx3.mutate(() => collection.insert(exampleTask))
+    tx3.mutate(() =>
+      collection.insert({
+        id: `task-id-3`,
+        text: `task-3`,
+        completed: true,
+        createdAt: new Date(`2023-01-01T00:00:00Z`),
+        updatedAt: new Date(`2023-01-01T00:00:00Z`),
+      })
+    )
     insertedItems = Array.from(collection.state.values())
     expect(insertedItems).toHaveLength(3)
 
