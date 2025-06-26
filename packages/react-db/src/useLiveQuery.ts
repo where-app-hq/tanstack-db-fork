@@ -55,27 +55,22 @@ export function useLiveQuery(configOrQuery: any, deps: Array<unknown> = []) {
       : string | number
 
   const [state, setState] = useState<Map<KeyType, CollectionType>>(
-    () => new Map(collection.entries() as any)
+    () => new Map(collection.entries())
   )
   const [data, setData] = useState<Array<CollectionType>>(() =>
-    Array.from(collection.values() as any)
+    Array.from(collection.values())
   )
 
   useEffect(() => {
     // Update initial state in case collection has data
-    setState(new Map(collection.entries() as any))
-    setData(Array.from(collection.values() as any))
+    setState(new Map(collection.entries()))
+    setData(Array.from(collection.values()))
 
     // Subscribe to changes and update state
     const unsubscribe = collection.subscribeChanges(() => {
-      setState(new Map(collection.entries() as any))
-      setData(Array.from(collection.values() as any))
+      setState(new Map(collection.entries()))
+      setData(Array.from(collection.values()))
     })
-
-    // Preload the collection data if not already started
-    if (collection.status === `idle`) {
-      collection.preload().catch(console.error)
-    }
 
     return unsubscribe
   }, [collection])

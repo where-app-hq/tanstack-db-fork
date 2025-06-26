@@ -112,7 +112,7 @@ describe(`Query Collections`, () => {
     })
   })
 
-  it.only(`should be able to query a collection with live updates`, async () => {
+  it(`should be able to query a collection with live updates`, async () => {
     const collection = createCollection(
       mockSyncCollectionOptions<Person>({
         id: `test-persons-2`,
