@@ -150,6 +150,12 @@ export function liveQueryCollectionOptions<
 
   const collections = extractCollectionsFromQuery(query)
 
+  const allCollectionsReady = () => {
+    return Object.values(collections).every(
+      (collection) => collection.status === `ready`
+    )
+  }
+
   let graphCache: D2 | undefined
   let inputsCache: Record<string, RootStreamBuilder<unknown>> | undefined
   let pipelineCache: ResultStream | undefined
@@ -254,6 +260,19 @@ export function liveQueryCollectionOptions<
 
       graph.finalize()
 
+      const maybeRunGraph = () => {
+        // We only run the graph if all the collections are ready
+        if (allCollectionsReady()) {
+          graph.run()
+          // On the initial run, we may need to do an empty commit to ensure that
+          // the collection is initialized
+          if (messagesCount === 0) {
+            begin()
+            commit()
+          }
+        }
+      }
+
       // Unsubscribe callbacks
       const unsubscribeCallbacks = new Set<() => void>()
 
@@ -265,7 +284,7 @@ export function liveQueryCollectionOptions<
         const unsubscribe = collection.subscribeChanges(
           (changes: Array<ChangeMessage>) => {
             sendChangesToInput(input, changes, collection.config.getKey)
-            graph.run()
+            maybeRunGraph()
           },
           { includeInitialState: true }
         )
@@ -273,16 +292,7 @@ export function liveQueryCollectionOptions<
       })
 
       // Initial run
-      graph.run()
-
-      // If we haven't had any messages on the initial run, with the initial state
-      // of the collections, we need to do an empty commit to ensure that the
-      // TODO: We may want to check that the collection have loaded?
-      // if not this needs to be done when all the collection have loaded?
-      if (messagesCount === 0) {
-        begin()
-        commit()
-      }
+      maybeRunGraph()
 
       // Return the unsubscribe function
       return () => {
