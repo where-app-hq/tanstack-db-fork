@@ -57,6 +57,7 @@ export interface QueryCollectionConfig<
   getKey: CollectionConfig<TItem>[`getKey`]
   schema?: CollectionConfig<TItem>[`schema`]
   sync?: CollectionConfig<TItem>[`sync`]
+  startSync?: CollectionConfig<TItem>[`startSync`]
 
   // Direct persistence handlers
   /**
@@ -136,7 +137,7 @@ export function queryCollectionOptions<
   if (!queryClient) {
     throw new Error(`[QueryCollection] queryClient must be provided.`)
   }
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
   if (!getKey) {
     throw new Error(`[QueryCollection] getKey must be provided.`)
   }
@@ -250,7 +251,11 @@ export function queryCollectionOptions<
       }
     })
 
-    return actualUnsubscribeFn
+    return async () => {
+      actualUnsubscribeFn()
+      await queryClient.cancelQueries({ queryKey })
+      queryClient.removeQueries({ queryKey })
+    }
   }
 
   /**
