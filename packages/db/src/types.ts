@@ -97,12 +97,16 @@ export type UtilsRecord = Record<string, Fn>
 export interface PendingMutation<
   T extends object = Record<string, unknown>,
   TOperation extends OperationType = OperationType,
+  TInsertInput = T,
 > {
   mutationId: string
+  // The state of the object before the mutation.
   original: TOperation extends `insert` ? {} : T
+  // The result state of the object after all mutations.
   modified: T
+  // The actual changes made.
   changes: TOperation extends `insert`
-    ? T
+    ? TInsertInput
     : TOperation extends `delete`
       ? T
       : Partial<T>

@@ -1226,7 +1226,13 @@ export class CollectionImpl<
     }
 
     const items = Array.isArray(data) ? data : [data]
-    const mutations: Array<PendingMutation<T, `insert`>> = []
+    const mutations: Array<
+      PendingMutation<
+        T,
+        `insert`,
+        CollectionInsertInput<TExplicit, TSchema, TFallback>
+      >
+    > = []
 
     // Create mutations for each item
     items.forEach((item) => {
@@ -1240,11 +1246,23 @@ export class CollectionImpl<
       }
       const globalKey = this.generateGlobalKey(key, item)
 
-      const mutation: PendingMutation<T, `insert`> = {
+      const mutation: PendingMutation<
+        T,
+        `insert`,
+        CollectionInsertInput<TExplicit, TSchema, TFallback>
+      > = {
         mutationId: crypto.randomUUID(),
         original: {},
         modified: validatedData,
-        changes: validatedData,
+        // Pick the values from validatedData based on what's passed in - this is for cases
+        // where a schema has default values. The validated data has the extra default
+        // values but for changes, we just want to show the data that was actually passed in.
+        changes: Object.fromEntries(
+          Object.keys(item).map((k) => [
+            k,
+            validatedData[k as keyof typeof validatedData],
+          ])
+        ) as CollectionInsertInput<TExplicit, TSchema, TFallback>,
         globalKey,
         key,
         metadata: config?.metadata as unknown,
