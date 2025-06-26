@@ -6,7 +6,7 @@ import {
   eq,
   gt,
 } from "@tanstack/db"
-import { ref, nextTick, watchEffect } from "vue"
+import { nextTick, ref, watchEffect } from "vue"
 import { useLiveQuery } from "../src/useLiveQuery"
 import { mockSyncCollectionOptions } from "../../db/tests/utls"
 
@@ -128,12 +128,12 @@ describe(`Query Collections`, () => {
     const { state, data } = useLiveQuery((q) =>
       q
         .from({ collection })
-        .where(({ collection }) => gt(collection.age, 30))
-        .select(({ collection }) => ({
-          id: collection.id,
-          name: collection.name,
+        .where(({ collection: c }) => gt(c.age, 30))
+        .select(({ collection: c }) => ({
+          id: c.id,
+          name: c.name,
         }))
-        .orderBy(({ collection }) => collection.id, `asc`)
+        .orderBy(({ collection: c }) => c.id, `asc`)
     )
 
     // Wait for collection to sync
@@ -391,11 +391,11 @@ describe(`Query Collections`, () => {
       (q) =>
         q
           .from({ collection })
-          .where(({ collection }) => gt(collection.age, minAge.value))
-          .select(({ collection }) => ({
-            id: collection.id,
-            name: collection.name,
-            age: collection.age,
+          .where(({ collection: c }) => gt(c.age, minAge.value))
+          .select(({ collection: c }) => ({
+            id: c.id,
+            name: c.name,
+            age: c.age,
           })),
       [minAge]
     )
@@ -457,13 +457,13 @@ describe(`Query Collections`, () => {
       useLiveQuery((q) =>
         q
           .from({ collection })
-          .where(({ collection }) => gt(collection.age, 30))
-          .select(({ collection }) => ({
-            id: collection.id,
-            name: collection.name,
-            team: collection.team,
+          .where(({ collection: c }) => gt(c.age, 30))
+          .select(({ collection: c }) => ({
+            id: c.id,
+            name: c.name,
+            team: c.team,
           }))
-          .orderBy(({ collection }) => collection.id, `asc`)
+          .orderBy(({ collection: c }) => c.id, `asc`)
       )
 
     // Wait for collection to sync

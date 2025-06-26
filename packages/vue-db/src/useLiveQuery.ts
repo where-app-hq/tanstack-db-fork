@@ -1,10 +1,10 @@
 import {
   computed,
-  toValue,
-  ref,
-  watchEffect,
-  onUnmounted,
   getCurrentInstance,
+  onUnmounted,
+  ref,
+  toValue,
+  watchEffect,
 } from "vue"
 import { createLiveQueryCollection } from "@tanstack/db"
 import type {

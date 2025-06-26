@@ -125,12 +125,12 @@ describe(`Query Collections`, () => {
       return useLiveQuery((q) =>
         q
           .from({ collection })
-          .where(({ collection }) => gt(collection.age, 30))
-          .select(({ collection }) => ({
-            id: collection.id,
-            name: collection.name,
+          .where(({ collection: c }) => gt(c.age, 30))
+          .select(({ collection: c }) => ({
+            id: c.id,
+            name: c.name,
           }))
-          .orderBy(({ collection }) => collection.id, `asc`)
+          .orderBy(({ collection: c }) => c.id, `asc`)
       )
     })
 
@@ -404,11 +404,11 @@ describe(`Query Collections`, () => {
           (q) =>
             q
               .from({ collection })
-              .where(({ collection }) => gt(collection.age, minAge))
-              .select(({ collection }) => ({
-                id: collection.id,
-                name: collection.name,
-                age: collection.age,
+              .where(({ collection: c }) => gt(c.age, minAge))
+              .select(({ collection: c }) => ({
+                id: c.id,
+                name: c.name,
+                age: c.age,
               })),
           [minAge]
         )
@@ -478,10 +478,10 @@ describe(`Query Collections`, () => {
           (q) =>
             q
               .from({ collection })
-              .where(({ collection }) => gt(collection.age, minAge))
-              .select(({ collection }) => ({
-                id: collection.id,
-                name: collection.name,
+              .where(({ collection: c }) => gt(c.age, minAge))
+              .select(({ collection: c }) => ({
+                id: c.id,
+                name: c.name,
               })),
           [minAge]
         )
@@ -542,13 +542,13 @@ describe(`Query Collections`, () => {
       return useLiveQuery((q) =>
         q
           .from({ collection })
-          .where(({ collection }) => gt(collection.age, 30))
-          .select(({ collection }) => ({
-            id: collection.id,
-            name: collection.name,
-            team: collection.team,
+          .where(({ collection: c }) => gt(c.age, 30))
+          .select(({ collection: c }) => ({
+            id: c.id,
+            name: c.name,
+            team: c.team,
           }))
-          .orderBy(({ collection }) => collection.id, `asc`)
+          .orderBy(({ collection: c }) => c.id, `asc`)
       )
     })
 
