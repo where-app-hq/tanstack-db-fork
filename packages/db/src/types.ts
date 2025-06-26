@@ -17,7 +17,7 @@ export type InferSchemaOutput<T> = T extends StandardSchemaV1
 /**
  * Helper type to extract the input type from a standard schema
  *
- * @internal This is used by the collection insert type system
+ * @internal This is used for collection insert type inference
  */
 export type InferSchemaInput<T> = T extends StandardSchemaV1
   ? StandardSchemaV1.InferInput<T> extends object
@@ -26,23 +26,18 @@ export type InferSchemaInput<T> = T extends StandardSchemaV1
   : Record<string, unknown>
 
 /**
- * Helper type to determine the insert input type based on priority:
- * 1. Schema input type (if schema provided and not 'never')
- * 2. Fallback to output type T
+ * Helper type to add fallback to InferSchemaInput
+ * This is because collections can be created without a schema, in which case we want to default to the T type generic.
  *
- * @remarks
- * This type is used internally to resolve the collection insert input type
- * When a schema is provided, it allows partial input with defaults
- * When no schema is provided, it falls back to the full output type
+ * @internal This is used for collection insert type inference
  */
-export type CollectionInsertInputInner<T, TSchema> = [TSchema] extends [never]
-  ? T
-  : TSchema extends StandardSchemaV1
-    ? InferSchemaInput<TSchema>
-    : T
+type InferSchemaInputWithFallback<T, TSchema> = TSchema extends StandardSchemaV1
+  ? InferSchemaInput<TSchema>
+  : T
+
 export type CollectionInsertInput<T, TSchema> =
-  | CollectionInsertInputInner<T, TSchema>
-  | Array<CollectionInsertInputInner<T, TSchema>>
+  | InferSchemaInputWithFallback<T, TSchema>
+  | Array<InferSchemaInputWithFallback<T, TSchema>>
 
 /**
  * Helper type to determine the final type based on priority:
