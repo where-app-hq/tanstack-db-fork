@@ -35,11 +35,13 @@ interface PendingSyncedTransaction<T extends object = Record<string, unknown>> {
  * @template TSchema - The schema type for validation and type inference
  */
 export interface Collection<
-  T extends object = Record<string, unknown>,
+  T extends object,
   TKey extends string | number = string | number,
   TUtils extends UtilsRecord = {},
   TSchema extends StandardSchemaV1 = StandardSchemaV1,
-> extends CollectionImpl<T, TKey, TSchema> {
+  TExplicit = unknown,
+  TFallback extends object = Record<string, unknown>,
+> extends CollectionImpl<T, TKey, TSchema, TExplicit, TFallback> {
   readonly utils: TUtils
 }
 
@@ -92,12 +94,16 @@ export function createCollection<
   ResolveType<TExplicit, TSchema, TFallback>,
   TKey,
   TUtils,
-  TSchema
+  TSchema,
+  TExplicit,
+  TFallback
 > {
   const collection = new CollectionImpl<
     ResolveType<TExplicit, TSchema, TFallback>,
     TKey,
-    TSchema
+    TSchema,
+    TExplicit,
+    TFallback
   >(options)
 
   // Copy utils to both top level and .utils namespace
@@ -111,7 +117,9 @@ export function createCollection<
     ResolveType<TExplicit, TSchema, TFallback>,
     TKey,
     TUtils,
-    TSchema
+    TSchema,
+    TExplicit,
+    TFallback
   >
 }
 
@@ -145,9 +153,11 @@ export class SchemaValidationError extends Error {
 }
 
 export class CollectionImpl<
-  T extends object = Record<string, unknown>,
+  T extends object,
   TKey extends string | number = string | number,
   TSchema extends StandardSchemaV1 = StandardSchemaV1,
+  TExplicit = unknown,
+  TFallback extends object = Record<string, unknown>,
 > {
   public config: CollectionConfig<T, TKey, TSchema>
 
@@ -934,7 +944,10 @@ export class CollectionImpl<
    * // Insert with custom key
    * insert({ text: "Buy groceries" }, { key: "grocery-task" })
    */
-  insert = (data: CollectionInsertInput<T, TSchema>, config?: InsertConfig) => {
+  insert = (
+    data: CollectionInsertInput<TExplicit, TSchema, TFallback>,
+    config?: InsertConfig
+  ) => {
     const ambientTransaction = getActiveTransaction()
 
     // If no ambient transaction exists, check for an onInsert handler early

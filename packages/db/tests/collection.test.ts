@@ -877,7 +877,9 @@ describe(`Collection with schema validation`, () => {
 
     insertedItems = Array.from(collection.state.values())
     expect(insertedItems).toHaveLength(2)
-    const secondItem = insertedItems[1]!
+
+    const secondItem = insertedItems.find((item) => item.text === `task-2`)!
+    expect(secondItem).toBeDefined()
     expect(secondItem.text).toBe(`task-2`)
     expect(secondItem.completed).toBe(true)
     expect(secondItem.id).toBeDefined()

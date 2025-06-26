@@ -26,18 +26,35 @@ export type InferSchemaInput<T> = T extends StandardSchemaV1
   : Record<string, unknown>
 
 /**
- * Helper type to add fallback to InferSchemaInput
- * This is because collections can be created without a schema, in which case we want to default to the T type generic.
+ * Helper type to determine the insert input type
+ * This takes the raw generics (TExplicit, TSchema, TFallback) instead of the resolved T.
+ *
+ * Priority:
+ * 1. Explicit generic TExplicit (if not 'unknown')
+ * 2. Schema input type (if schema provided)
+ * 3. Fallback type TFallback
  *
  * @internal This is used for collection insert type inference
  */
-type InferSchemaInputWithFallback<T, TSchema> = TSchema extends StandardSchemaV1
-  ? InferSchemaInput<TSchema>
-  : T
+export type ResolveInsertInput<
+  TExplicit = unknown,
+  TSchema extends StandardSchemaV1 = never,
+  TFallback extends object = Record<string, unknown>,
+> = unknown extends TExplicit
+  ? [TSchema] extends [never]
+    ? TFallback
+    : InferSchemaInput<TSchema>
+  : TExplicit extends object
+    ? TExplicit
+    : Record<string, unknown>
 
-export type CollectionInsertInput<T, TSchema> =
-  | InferSchemaInputWithFallback<T, TSchema>
-  | Array<InferSchemaInputWithFallback<T, TSchema>>
+export type CollectionInsertInput<
+  TExplicit = unknown,
+  TSchema extends StandardSchemaV1 = never,
+  TFallback extends object = Record<string, unknown>,
+> =
+  | ResolveInsertInput<TExplicit, TSchema, TFallback>
+  | Array<ResolveInsertInput<TExplicit, TSchema, TFallback>>
 
 /**
  * Helper type to determine the final type based on priority:
