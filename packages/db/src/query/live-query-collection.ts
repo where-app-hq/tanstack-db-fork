@@ -191,7 +191,7 @@ export function liveQueryCollectionOptions<
 
   // Create the sync configuration
   const sync: SyncConfig<TResult> = {
-    sync: ({ begin, write, commit, collection }) => {
+    sync: ({ begin, write, commit, collection: theCollection }) => {
       const { graph, inputs, pipeline } = maybeCompileBasePipeline()
       let messagesCount = 0
       pipeline.pipe(
@@ -249,7 +249,7 @@ export function liveQueryCollectionOptions<
                 // Just update(s) but the item is already in the collection (so
                 // was inserted previously).
                 (inserts === deletes &&
-                  collection.has(rawKey as string | number))
+                  theCollection.has(rawKey as string | number))
               ) {
                 write({
                   value,

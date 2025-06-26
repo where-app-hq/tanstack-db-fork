@@ -4,6 +4,42 @@ import { mockSyncCollectionOptions } from "../utls.js"
 import { createLiveQueryCollection } from "../../src/query/live-query-collection.js"
 import { eq, gt } from "../../src/query/builder/functions.js"
 
+type Person = {
+  id: string
+  name: string
+  age: number
+  email: string
+  isActive: boolean
+  team: string
+}
+
+const initialPersons: Array<Person> = [
+  {
+    id: `1`,
+    name: `John Doe`,
+    age: 30,
+    email: `john.doe@example.com`,
+    isActive: true,
+    team: `team1`,
+  },
+  {
+    id: `2`,
+    name: `Jane Doe`,
+    age: 25,
+    email: `jane.doe@example.com`,
+    isActive: true,
+    team: `team2`,
+  },
+  {
+    id: `3`,
+    name: `John Smith`,
+    age: 35,
+    email: `john.smith@example.com`,
+    isActive: true,
+    team: `team1`,
+  },
+]
+
 // Test schema
 interface Employee {
   id: number
@@ -462,6 +498,97 @@ describe(`Query2 OrderBy Compiler`, () => {
       expect(results).toHaveLength(4)
       expect(results[0]!.name).toBe(`Bob`) // Now the highest paid
       expect(results.map((r) => r.salary)).toEqual([60000, 55000, 52000, 50000])
+    })
+
+    it(`handles insert update delete sequence`, async () => {
+      const collection = createCollection(
+        mockSyncCollectionOptions<Person>({
+          id: `test-string-id-sequence`,
+          getKey: (person: Person) => person.id,
+          initialData: initialPersons,
+        })
+      )
+
+      const liveQuery = createLiveQueryCollection((q) =>
+        q
+          .from({ collection })
+          .select(({ collection: c }) => ({
+            id: c.id,
+            name: c.name,
+          }))
+          .orderBy(({ collection: c }) => c.id, `asc`)
+      )
+      await liveQuery.preload()
+
+      // Initial state: should have all 3 people
+      let results = Array.from(liveQuery.values())
+      expect(results).toHaveLength(3)
+
+      // INSERT: Add Kyle
+      collection.utils.begin()
+      collection.utils.write({
+        type: `insert`,
+        value: {
+          id: `4`,
+          name: `Kyle Doe`,
+          age: 40,
+          email: `kyle.doe@example.com`,
+          isActive: true,
+          team: `team1`,
+        },
+      })
+      collection.utils.commit()
+
+      results = Array.from(liveQuery.values())
+      expect(results).toHaveLength(4)
+      let entries = new Map(liveQuery.entries())
+      expect(entries.get(`4`)).toMatchObject({
+        id: `4`,
+        name: `Kyle Doe`,
+      })
+
+      // UPDATE: Change Kyle's name
+      collection.utils.begin()
+      collection.utils.write({
+        type: `update`,
+        value: {
+          id: `4`,
+          name: `Kyle Doe Updated`,
+          age: 40,
+          email: `kyle.doe@example.com`,
+          isActive: true,
+          team: `team1`,
+        },
+      })
+      collection.utils.commit()
+
+      results = Array.from(liveQuery.values())
+      expect(results).toHaveLength(4)
+      entries = new Map(liveQuery.entries())
+      expect(entries.get(`4`)).toMatchObject({
+        id: `4`,
+        name: `Kyle Doe Updated`,
+      })
+
+      // DELETE: Remove Kyle
+      collection.utils.begin()
+      collection.utils.write({
+        type: `delete`,
+        value: {
+          id: `4`,
+          name: `Kyle Doe Updated`,
+          age: 40,
+          email: `kyle.doe@example.com`,
+          isActive: true,
+          team: `team1`,
+        },
+      })
+      collection.utils.commit()
+
+      results = Array.from(liveQuery.values())
+      expect(results).toHaveLength(3) // Should be back to original 3
+      entries = new Map(liveQuery.entries())
+      expect(entries.get(`4`)).toBeUndefined()
     })
   })
 
