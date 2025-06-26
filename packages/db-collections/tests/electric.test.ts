@@ -10,6 +10,7 @@ import type {
   TransactionWithMutations,
 } from "@tanstack/db"
 import type { Message, Row } from "@electric-sql/client"
+import type { StandardSchemaV1 } from "@standard-schema/spec"
 
 // Mock the ShapeStream module
 const mockSubscribe = vi.fn()
@@ -26,7 +27,13 @@ vi.mock(`@electric-sql/client`, async () => {
 })
 
 describe(`Electric Integration`, () => {
-  let collection: Collection<Row, string | number, ElectricCollectionUtils>
+  let collection: Collection<
+    Row,
+    string | number,
+    ElectricCollectionUtils,
+    StandardSchemaV1<unknown, unknown>,
+    Row<unknown>
+  >
   let subscriber: (messages: Array<Message<Row>>) => void
 
   beforeEach(() => {
@@ -58,7 +65,9 @@ describe(`Electric Integration`, () => {
     collection = createCollection<
       Row,
       string | number,
-      ElectricCollectionUtils
+      ElectricCollectionUtils,
+      StandardSchemaV1<unknown, unknown>,
+      Row<unknown>
     >(options)
   })
 
