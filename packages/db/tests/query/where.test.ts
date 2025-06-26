@@ -131,6 +131,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`eq operator - equality comparison`, () => {
       const activeEmployees = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -147,6 +148,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test with number equality
       const specificEmployee = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -190,6 +192,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`gt operator - greater than comparison`, () => {
       const highEarners = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -206,6 +209,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test with age
       const seniors = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -246,6 +250,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`gte operator - greater than or equal comparison`, () => {
       const wellPaid = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -262,6 +267,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test boundary condition
       const exactMatch = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -274,6 +280,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`lt operator - less than comparison`, () => {
       const juniorSalary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -290,6 +297,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test with age
       const youngEmployees = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -306,6 +314,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`lte operator - less than or equal comparison`, () => {
       const modestSalary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -338,6 +347,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`and operator - logical AND`, () => {
       const activeHighEarners = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -361,6 +371,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test with three conditions
       const specificGroup = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -384,6 +395,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`or operator - logical OR`, () => {
       const seniorOrHighPaid = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -400,6 +412,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test with department conditions
       const specificDepartments = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -418,6 +431,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`not operator - logical NOT`, () => {
       const inactiveEmployees = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -434,6 +448,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test with complex condition
       const notHighEarners = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -453,6 +468,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`complex nested boolean conditions`, () => {
       const complexQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -487,6 +503,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`like operator - pattern matching`, () => {
       const johnsonFamily = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -499,6 +516,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test starts with pattern
       const startsWithB = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -510,6 +528,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test ends with pattern
       const endsWither = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -521,6 +540,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test email pattern
       const companyEmails = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -541,6 +561,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`isIn operator - membership testing`, () => {
       const specificDepartments = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -561,6 +582,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test with specific IDs
       const specificEmployees = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -572,6 +594,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test with salary ranges
       const salaryRanges = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -596,6 +619,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`null equality comparison`, () => {
       const nullEmails = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -611,6 +635,7 @@ describe(`Query WHERE Execution`, () => {
       expect(nullEmails.get(3)?.email).toBeNull()
 
       const nullDepartments = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -628,6 +653,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`not null comparison`, () => {
       const hasEmail = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -643,6 +669,7 @@ describe(`Query WHERE Execution`, () => {
       expect(hasEmail.toArray.every((emp) => emp.email !== null)).toBe(true)
 
       const hasDepartment = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -667,6 +694,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`upper function in WHERE clause`, () => {
       const upperNameMatch = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -680,6 +708,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`lower function in WHERE clause`, () => {
       const lowerNameMatch = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -693,6 +722,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`length function in WHERE clause`, () => {
       const shortNames = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -710,6 +740,7 @@ describe(`Query WHERE Execution`, () => {
       )
 
       const longNames = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -726,6 +757,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`concat function in WHERE clause`, () => {
       const fullNameMatch = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -741,6 +773,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`coalesce function in WHERE clause`, () => {
       const emailOrDefault = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -768,6 +801,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`add function in WHERE clause`, () => {
       const salaryPlusBonus = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -786,6 +820,7 @@ describe(`Query WHERE Execution`, () => {
 
       // Test age calculation
       const ageCheck = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -811,6 +846,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`live updates with complex WHERE conditions`, () => {
       const complexQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -885,6 +921,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`live updates with string function WHERE conditions`, () => {
       const nameStartsWithA = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -938,6 +975,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`live updates with null handling`, () => {
       const hasNullEmail = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -1006,6 +1044,7 @@ describe(`Query WHERE Execution`, () => {
       )
 
       const emptyQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: emptyCollection })
@@ -1038,6 +1077,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`multiple WHERE conditions with same field`, () => {
       const salaryRange = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })
@@ -1061,6 +1101,7 @@ describe(`Query WHERE Execution`, () => {
 
     test(`deeply nested conditions`, () => {
       const deeplyNested = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ emp: employeesCollection })

@@ -8,6 +8,7 @@ import type {
   ChangeMessage,
   CollectionConfig,
   KeyedStream,
+  ResultStream,
   SyncConfig,
   UtilsRecord,
 } from "../types.js"
@@ -73,6 +74,11 @@ export interface LiveQueryCollectionConfig<
   onInsert?: CollectionConfig<TResult>[`onInsert`]
   onUpdate?: CollectionConfig<TResult>[`onUpdate`]
   onDelete?: CollectionConfig<TResult>[`onDelete`]
+
+  /**
+   * Start sync / the query immediately
+   */
+  startSync?: boolean
 }
 
 /**
@@ -142,30 +148,53 @@ export function liveQueryCollectionOptions<
         }
       : undefined
 
+  const collections = extractCollectionsFromQuery(query)
+
+  let graphCache: D2 | undefined
+  let inputsCache: Record<string, RootStreamBuilder<unknown>> | undefined
+  let pipelineCache: ResultStream | undefined
+
+  const compileBasePipeline = () => {
+    graphCache = new D2()
+    inputsCache = Object.fromEntries(
+      Object.entries(collections).map(([key]) => [
+        key,
+        graphCache!.newInput<any>(),
+      ])
+    )
+    pipelineCache = compileQuery(
+      query,
+      inputsCache as Record<string, KeyedStream>
+    )
+  }
+
+  const maybeCompileBasePipeline = () => {
+    if (!graphCache || !inputsCache || !pipelineCache) {
+      compileBasePipeline()
+    }
+    return {
+      graph: graphCache!,
+      inputs: inputsCache!,
+      pipeline: pipelineCache!,
+    }
+  }
+
+  // Compile the base pipeline once initially
+  // This is done to ensure that any errors are thrown immediately and synchronously
+  compileBasePipeline()
+
   // Create the sync configuration
   const sync: SyncConfig<TResult> = {
     sync: ({ begin, write, commit }) => {
-      // Extract collections from the query
-      const collections = extractCollectionsFromQuery(query)
-
-      // Create D2 graph and inputs
-      const graph = new D2()
-      const inputs = Object.fromEntries(
-        Object.entries(collections).map(([key]) => [key, graph.newInput<any>()])
-      )
-
-      // Compile the query to a D2 pipeline
-      const pipeline = compileQuery(
-        query,
-        inputs as Record<string, KeyedStream>
-      )
-
-      // Process output and send to collection
+      const { graph, inputs, pipeline } = maybeCompileBasePipeline()
+      let messagesCount = 0
       pipeline.pipe(
         output((data) => {
+          const messages = data.getInner()
+          messagesCount += messages.length
+
           begin()
-          data
-            .getInner()
+          messages
             .reduce((acc, [[key, tupleData], multiplicity]) => {
               // All queries now consistently return [value, orderByIndex] format
               // where orderByIndex is undefined for queries without ORDER BY
@@ -223,27 +252,42 @@ export function liveQueryCollectionOptions<
         })
       )
 
-      // Finalize the graph
       graph.finalize()
+
+      // Unsubscribe callbacks
+      const unsubscribeCallbacks = new Set<() => void>()
 
       // Set up data flow from input collections to the compiled query
       Object.entries(collections).forEach(([collectionId, collection]) => {
         const input = inputs[collectionId]!
 
-        // Send initial state
-        sendChangesToInput(
-          input,
-          collection.currentStateAsChanges(),
-          collection.config.getKey
-        )
-        graph.run()
-
         // Subscribe to changes
-        collection.subscribeChanges((changes: Array<ChangeMessage>) => {
-          sendChangesToInput(input, changes, collection.config.getKey)
-          graph.run()
-        })
+        const unsubscribe = collection.subscribeChanges(
+          (changes: Array<ChangeMessage>) => {
+            sendChangesToInput(input, changes, collection.config.getKey)
+            graph.run()
+          },
+          { includeInitialState: true }
+        )
+        unsubscribeCallbacks.add(unsubscribe)
       })
+
+      // Initial run
+      graph.run()
+
+      // If we haven't had any messages on the initial run, with the initial state
+      // of the collections, we need to do an empty commit to ensure that the
+      // TODO: We may want to check that the collection have loaded?
+      // if not this needs to be done when all the collection have loaded?
+      if (messagesCount === 0) {
+        begin()
+        commit()
+      }
+
+      // Return the unsubscribe function
+      return () => {
+        unsubscribeCallbacks.forEach((unsubscribe) => unsubscribe())
+      }
     },
   }
 
@@ -258,6 +302,7 @@ export function liveQueryCollectionOptions<
     onInsert: config.onInsert,
     onUpdate: config.onUpdate,
     onDelete: config.onDelete,
+    startSync: config.startSync,
   }
 }
 
@@ -395,7 +440,9 @@ function sendChangesToInput(
  * Traverses the query IR to find all collection references
  * Maps collections by their ID (not alias) as expected by the compiler
  */
-function extractCollectionsFromQuery(query: any): Record<string, any> {
+function extractCollectionsFromQuery(
+  query: any
+): Record<string, Collection<any, any, any>> {
   const collections: Record<string, any> = {}
 
   // Helper function to recursively extract collections from a query or source

@@ -51,6 +51,7 @@ describe(`Query`, () => {
 
     test(`should create, update and delete a live query collection with config`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q.from({ user: usersCollection }).select(({ user }) => ({
             id: user.id,
@@ -110,7 +111,7 @@ describe(`Query`, () => {
       expect(liveCollection.get(5)).toBeUndefined()
     })
 
-    test(`should create, update and delete a live query collection with query function`, () => {
+    test(`should create, update and delete a live query collection with query function`, async () => {
       const liveCollection = createLiveQueryCollection((q) =>
         q.from({ user: usersCollection }).select(({ user }) => ({
           id: user.id,
@@ -120,6 +121,8 @@ describe(`Query`, () => {
           active: user.active,
         }))
       )
+
+      await liveCollection.preload()
 
       const results = liveCollection.toArray
 
@@ -172,6 +175,7 @@ describe(`Query`, () => {
 
     test(`should create, update and delete a live query collection with WHERE clause`, () => {
       const activeLiveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })
@@ -259,6 +263,7 @@ describe(`Query`, () => {
 
     test(`should create a live query collection with SELECT projection`, () => {
       const projectedLiveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })
@@ -352,6 +357,7 @@ describe(`Query`, () => {
     test(`should use custom getKey when provided`, () => {
       const customKeyCollection = createLiveQueryCollection({
         id: `custom-key-users`,
+        startSync: true,
         query: (q) =>
           q.from({ user: usersCollection }).select(({ user }) => ({
             userId: user.id,
@@ -424,6 +430,7 @@ describe(`Query`, () => {
 
     test(`should auto-generate unique IDs when not provided`, () => {
       const collection1 = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q.from({ user: usersCollection }).select(({ user }) => ({
             id: user.id,
@@ -432,6 +439,7 @@ describe(`Query`, () => {
       })
 
       const collection2 = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })
@@ -458,6 +466,7 @@ describe(`Query`, () => {
 
     test(`should return original collection type when no select is provided`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) => q.from({ user: usersCollection }),
       })
 
@@ -518,6 +527,7 @@ describe(`Query`, () => {
 
     test(`should return original collection type when no select is provided with WHERE clause`, () => {
       const activeLiveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })
@@ -582,10 +592,12 @@ describe(`Query`, () => {
       usersCollection.utils.commit()
     })
 
-    test(`should return original collection type with query function syntax and no select`, () => {
+    test(`should return original collection type with query function syntax and no select`, async () => {
       const liveCollection = createLiveQueryCollection((q) =>
         q.from({ user: usersCollection }).where(({ user }) => gt(user.age, 20))
       )
+
+      await liveCollection.preload()
 
       const results = liveCollection.toArray
       // Should return the original User type, not namespaced
@@ -608,6 +620,7 @@ describe(`Query`, () => {
 
     test(`should support spread operator with computed fields in select`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })

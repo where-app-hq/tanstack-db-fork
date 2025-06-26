@@ -130,6 +130,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`group by customer_id with aggregates`, () => {
       const customerSummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -179,6 +180,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`group by status`, () => {
       const statusSummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -217,6 +219,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`group by product_category`, () => {
       const categorySummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -256,6 +259,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`group by customer_id and status`, () => {
       const customerStatusSummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -308,6 +312,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`group by status and product_category`, () => {
       const statusCategorySummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -344,6 +349,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`group by after filtering with WHERE`, () => {
       const completedOrdersSummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -373,6 +379,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`group by with complex WHERE conditions`, () => {
       const highValueOrdersSummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -413,6 +420,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`having with count filter`, () => {
       const highVolumeCustomers = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -436,6 +444,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`having with sum filter`, () => {
       const highValueCustomers = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -464,6 +473,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`having with avg filter`, () => {
       const consistentCustomers = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -490,6 +500,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`having with multiple conditions using AND`, () => {
       const premiumCustomers = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -519,6 +530,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`having with multiple conditions using OR`, () => {
       const interestingCustomers = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -548,6 +560,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`having combined with WHERE clause`, () => {
       const filteredHighValueCustomers = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -574,6 +587,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`having with min and max filters`, () => {
       const diverseSpendingCustomers = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -602,6 +616,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`having with product category grouping`, () => {
       const popularCategories = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -626,6 +641,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`having with no results`, () => {
       const impossibleFilter = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -652,6 +668,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`live updates when inserting new orders`, () => {
       const customerSummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -717,6 +734,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`live updates when updating existing orders`, () => {
       const statusSummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -757,6 +775,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`live updates when deleting orders`, () => {
       const customerSummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -806,6 +825,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`group by with null values`, () => {
       const salesRepSummary = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })
@@ -848,6 +868,7 @@ describe(`Query GROUP BY Execution`, () => {
       )
 
       const emptyGroupBy = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: emptyCollection })
@@ -886,6 +907,7 @@ describe(`Query GROUP BY Execution`, () => {
 
     test(`group by with all aggregate functions`, () => {
       const comprehensiveStats = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ orders: ordersCollection })

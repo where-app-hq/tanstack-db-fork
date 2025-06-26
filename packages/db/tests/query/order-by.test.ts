@@ -93,7 +93,7 @@ describe(`Query2 OrderBy Compiler`, () => {
   })
 
   describe(`Basic OrderBy`, () => {
-    it(`orders by single column ascending`, () => {
+    it(`orders by single column ascending`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -103,6 +103,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             name: employees.name,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
 
@@ -116,7 +117,7 @@ describe(`Query2 OrderBy Compiler`, () => {
       ])
     })
 
-    it(`orders by single column descending`, () => {
+    it(`orders by single column descending`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -127,6 +128,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
 
@@ -136,7 +138,7 @@ describe(`Query2 OrderBy Compiler`, () => {
       ])
     })
 
-    it(`maintains deterministic order with multiple calls`, () => {
+    it(`maintains deterministic order with multiple calls`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -146,6 +148,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             name: employees.name,
           }))
       )
+      await collection.preload()
 
       const results1 = Array.from(collection.values())
       const results2 = Array.from(collection.values())
@@ -155,7 +158,7 @@ describe(`Query2 OrderBy Compiler`, () => {
   })
 
   describe(`Multiple Column OrderBy`, () => {
-    it(`orders by multiple columns`, () => {
+    it(`orders by multiple columns`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -168,6 +171,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
 
@@ -187,7 +191,7 @@ describe(`Query2 OrderBy Compiler`, () => {
       ])
     })
 
-    it(`handles mixed sort directions`, () => {
+    it(`handles mixed sort directions`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -199,6 +203,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             hire_date: employees.hire_date,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
 
@@ -210,7 +215,7 @@ describe(`Query2 OrderBy Compiler`, () => {
   })
 
   describe(`OrderBy with Limit and Offset`, () => {
-    it(`applies limit correctly with ordering`, () => {
+    it(`applies limit correctly with ordering`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -222,6 +227,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
 
@@ -229,7 +235,7 @@ describe(`Query2 OrderBy Compiler`, () => {
       expect(results.map((r) => r.salary)).toEqual([65000, 60000, 55000])
     })
 
-    it(`applies offset correctly with ordering`, () => {
+    it(`applies offset correctly with ordering`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -241,6 +247,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
 
@@ -248,7 +255,7 @@ describe(`Query2 OrderBy Compiler`, () => {
       expect(results.map((r) => r.salary)).toEqual([55000, 52000, 50000])
     })
 
-    it(`applies both limit and offset with ordering`, () => {
+    it(`applies both limit and offset with ordering`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -261,6 +268,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
 
@@ -286,7 +294,7 @@ describe(`Query2 OrderBy Compiler`, () => {
   })
 
   describe(`OrderBy with Joins`, () => {
-    it(`orders joined results correctly`, () => {
+    it(`orders joined results correctly`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -304,6 +312,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
 
@@ -325,7 +334,7 @@ describe(`Query2 OrderBy Compiler`, () => {
   })
 
   describe(`OrderBy with Where Clauses`, () => {
-    it(`orders filtered results correctly`, () => {
+    it(`orders filtered results correctly`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -337,6 +346,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
 
@@ -346,7 +356,7 @@ describe(`Query2 OrderBy Compiler`, () => {
   })
 
   describe(`Fractional Index Behavior`, () => {
-    it(`maintains stable ordering during live updates`, () => {
+    it(`maintains stable ordering during live updates`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -357,6 +367,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       // Get initial order
       const initialResults = Array.from(collection.values())
@@ -390,7 +401,7 @@ describe(`Query2 OrderBy Compiler`, () => {
       expect(frankIndex).toBe(2) // Should be third in the list
     })
 
-    it(`handles updates to ordered fields correctly`, () => {
+    it(`handles updates to ordered fields correctly`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -401,6 +412,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       // Update Alice's salary to be the highest
       const updatedAlice = { ...employeeData[0]!, salary: 70000 }
@@ -424,7 +436,7 @@ describe(`Query2 OrderBy Compiler`, () => {
       expect(salaries[0]).toBe(70000)
     })
 
-    it(`handles deletions correctly`, () => {
+    it(`handles deletions correctly`, async () => {
       const collection = createLiveQueryCollection((q) =>
         q
           .from({ employees: employeesCollection })
@@ -435,6 +447,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             salary: employees.salary,
           }))
       )
+      await collection.preload()
 
       // Delete the highest paid employee (Diana)
       const dianaToDelete = employeeData.find((emp) => emp.id === 4)!
@@ -453,7 +466,7 @@ describe(`Query2 OrderBy Compiler`, () => {
   })
 
   describe(`Edge Cases`, () => {
-    it(`handles empty collections`, () => {
+    it(`handles empty collections`, async () => {
       const emptyCollection = createCollection(
         mockSyncCollectionOptions<Employee>({
           id: `test-empty-employees`,
@@ -471,6 +484,7 @@ describe(`Query2 OrderBy Compiler`, () => {
             name: employees.name,
           }))
       )
+      await collection.preload()
 
       const results = Array.from(collection.values())
       expect(results).toHaveLength(0)

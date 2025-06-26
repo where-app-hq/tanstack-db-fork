@@ -88,6 +88,7 @@ describe(`Join Subquery Types`, () => {
   describe(`subqueries in FROM clause with joins`, () => {
     test(`join subquery with collection preserves correct types`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery: filter issues by project 1
           const project1Issues = q
@@ -124,6 +125,7 @@ describe(`Join Subquery Types`, () => {
 
     test(`left join collection with subquery without SELECT preserves namespaced types`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery: filter active users
           const activeUsers = q
@@ -152,6 +154,7 @@ describe(`Join Subquery Types`, () => {
 
     test(`join subquery with subquery preserves correct types`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // First subquery: high-duration issues
           const longIssues = q
@@ -196,6 +199,7 @@ describe(`Join Subquery Types`, () => {
   describe(`subqueries in JOIN clause`, () => {
     test(`subquery in JOIN clause with inner join preserves types`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery for engineering department users (departmentId: 1)
           const engineeringUsers = q
@@ -229,6 +233,7 @@ describe(`Join Subquery Types`, () => {
 
     test(`subquery in JOIN clause with left join without SELECT preserves namespaced types`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery for active users only
           const activeUsers = q
@@ -256,6 +261,7 @@ describe(`Join Subquery Types`, () => {
 
     test(`complex subqueries with SELECT clauses preserve transformed types`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery 1: Transform issues with SELECT
           const transformedIssues = q
@@ -318,6 +324,7 @@ describe(`Join Subquery Types`, () => {
   describe(`subqueries without SELECT in joins`, () => {
     test(`subquery without SELECT in FROM clause preserves original types`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery without SELECT - should preserve original Issue type
           const filteredIssues = q
@@ -362,6 +369,7 @@ describe(`Join Subquery Types`, () => {
 
     test(`left join with SELECT should make joined fields optional (FIXED)`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery: filter active users
           const activeUsers = q

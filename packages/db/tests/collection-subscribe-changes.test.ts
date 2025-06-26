@@ -294,8 +294,6 @@ describe(`Collection.subscribeChanges`, () => {
       })
     )
 
-    await waitForChanges()
-
     // Verify that update was emitted
     expect(callback).toHaveBeenCalledTimes(1)
 

@@ -66,6 +66,7 @@ export function mockSyncCollectionOptions<
         commit()
       },
     },
+    startSync: true,
     onInsert: async (_params: MutationFnParams<T>) => {
       // TODO
       await awaitSync()

@@ -83,6 +83,7 @@ describe(`Subquery`, () => {
 
     test(`should create live query with simple subquery in FROM clause`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           const projectIssues = q
             .from({ issue: issuesCollection })
@@ -107,7 +108,7 @@ describe(`Subquery`, () => {
       )
     })
 
-    test(`should create live query with subquery using query function syntax`, () => {
+    test(`should create live query with subquery using query function syntax`, async () => {
       const liveCollection = createLiveQueryCollection((q) => {
         const openIssues = q
           .from({ issue: issuesCollection })
@@ -119,6 +120,7 @@ describe(`Subquery`, () => {
           projectId: openIssue.projectId,
         }))
       })
+      await liveCollection.preload()
 
       const results = liveCollection.toArray
       expect(results).toHaveLength(2) // Issues 1 and 4 are open
@@ -133,6 +135,7 @@ describe(`Subquery`, () => {
 
     test(`should return original collection type when subquery has no select`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           const longIssues = q
             .from({ issue: issuesCollection })
@@ -163,6 +166,7 @@ describe(`Subquery`, () => {
     test(`should use custom getKey when provided with subqueries`, () => {
       const customKeyCollection = createLiveQueryCollection({
         id: `custom-key-subquery`,
+        startSync: true,
         query: (q) => {
           const highDurationIssues = q
             .from({ issue: issuesCollection })
@@ -190,6 +194,7 @@ describe(`Subquery`, () => {
 
     test(`should auto-generate unique IDs for subquery collections`, () => {
       const collection1 = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           const openIssues = q
             .from({ issue: issuesCollection })
@@ -200,6 +205,7 @@ describe(`Subquery`, () => {
       })
 
       const collection2 = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           const closedIssues = q
             .from({ issue: issuesCollection })
@@ -221,6 +227,7 @@ describe(`Subquery`, () => {
 
     test(`should handle subquery with SELECT clause transforming data`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery that transforms and selects specific fields
           const transformedIssues = q

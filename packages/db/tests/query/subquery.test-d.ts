@@ -61,6 +61,7 @@ describe(`Subquery Types`, () => {
   describe(`basic subqueries in FROM clause`, () => {
     test(`subquery in FROM clause preserves correct types`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           const projectIssues = q
             .from({ issue: issuesCollection })
@@ -88,6 +89,7 @@ describe(`Subquery Types`, () => {
 
     test(`subquery without SELECT returns original collection type`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           const longIssues = q
             .from({ issue: issuesCollection })
@@ -103,6 +105,7 @@ describe(`Subquery Types`, () => {
 
     test(`subquery with SELECT clause transforms type correctly`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           const transformedIssues = q
             .from({ issue: issuesCollection })
@@ -140,6 +143,7 @@ describe(`Subquery Types`, () => {
 
     test(`nested subqueries preserve type information`, () => {
       const liveCollection = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // First level subquery
           const filteredIssues = q

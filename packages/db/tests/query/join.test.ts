@@ -96,6 +96,7 @@ function testJoinType(joinType: JoinType) {
 
     test(`should perform ${joinType} join with explicit select`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })
@@ -183,6 +184,7 @@ function testJoinType(joinType: JoinType) {
 
     test(`should perform ${joinType} join without select (namespaced result)`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })
@@ -275,6 +277,7 @@ function testJoinType(joinType: JoinType) {
 
     test(`should handle live updates for ${joinType} joins - insert matching record`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })
@@ -317,6 +320,7 @@ function testJoinType(joinType: JoinType) {
 
     test(`should handle live updates for ${joinType} joins - delete record`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })
@@ -355,6 +359,7 @@ function testJoinType(joinType: JoinType) {
     if (joinType === `left` || joinType === `full`) {
       test(`should handle null to match transition for ${joinType} joins`, () => {
         const joinQuery = createLiveQueryCollection({
+          startSync: true,
           query: (q) =>
             q
               .from({ user: usersCollection })
@@ -403,6 +408,7 @@ function testJoinType(joinType: JoinType) {
     if (joinType === `right` || joinType === `full`) {
       test(`should handle unmatched department for ${joinType} joins`, () => {
         const joinQuery = createLiveQueryCollection({
+          startSync: true,
           query: (q) =>
             q
               .from({ user: usersCollection })
@@ -467,6 +473,7 @@ describe(`Query JOIN Operations`, () => {
 
     test(`should handle multiple simultaneous updates`, () => {
       const innerJoinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })
@@ -539,6 +546,7 @@ describe(`Query JOIN Operations`, () => {
       )
 
       const innerJoinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: emptyUsers })
@@ -577,6 +585,7 @@ describe(`Query JOIN Operations`, () => {
     test(`should handle null join keys correctly`, () => {
       // Test with user that has null department_id
       const leftJoinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) =>
           q
             .from({ user: usersCollection })

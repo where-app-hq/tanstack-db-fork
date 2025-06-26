@@ -134,6 +134,7 @@ describe(`Join with Subqueries`, () => {
 
     test(`should join subquery with collection - inner join`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery: filter issues by project 1
           const project1Issues = q
@@ -172,6 +173,7 @@ describe(`Join with Subqueries`, () => {
 
     test(`should join collection with subquery - left join`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery: filter active users
           const activeUsers = q
@@ -212,6 +214,7 @@ describe(`Join with Subqueries`, () => {
 
     test(`should join subquery with subquery - inner join`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // First subquery: high-duration issues
           const longIssues = q
@@ -272,6 +275,7 @@ describe(`Join with Subqueries`, () => {
 
     test(`should use subquery in JOIN clause - inner join`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery for engineering department users (departmentId: 1)
           const engineeringUsers = q
@@ -307,6 +311,7 @@ describe(`Join with Subqueries`, () => {
 
     test(`should use subquery in JOIN clause - left join`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery for active users only
           const activeUsers = q
@@ -348,6 +353,7 @@ describe(`Join with Subqueries`, () => {
 
     test(`should handle subqueries with SELECT clauses in both FROM and JOIN`, () => {
       const joinQuery = createLiveQueryCollection({
+        startSync: true,
         query: (q) => {
           // Subquery 1: Transform issues with SELECT
           const transformedIssues = q
