@@ -35,11 +35,14 @@ export type InferSchemaInput<T> = T extends StandardSchemaV1
  * When a schema is provided, it allows partial input with defaults
  * When no schema is provided, it falls back to the full output type
  */
-export type CollectionInsertInput<T, TSchema> = [TSchema] extends [never]
+export type CollectionInsertInputInner<T, TSchema> = [TSchema] extends [never]
   ? T
   : TSchema extends StandardSchemaV1
     ? InferSchemaInput<TSchema>
     : T
+export type CollectionInsertInput<T, TSchema> =
+  | CollectionInsertInputInner<T, TSchema>
+  | Array<CollectionInsertInputInner<T, TSchema>>
 
 /**
  * Helper type to determine the final type based on priority:

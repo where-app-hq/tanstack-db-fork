@@ -934,12 +934,7 @@ export class CollectionImpl<
    * // Insert with custom key
    * insert({ text: "Buy groceries" }, { key: "grocery-task" })
    */
-  insert = (
-    data:
-      | CollectionInsertInput<T, TSchema>
-      | Array<CollectionInsertInput<T, TSchema>>,
-    config?: InsertConfig
-  ) => {
+  insert = (data: CollectionInsertInput<T, TSchema>, config?: InsertConfig) => {
     const ambientTransaction = getActiveTransaction()
 
     // If no ambient transaction exists, check for an onInsert handler early
