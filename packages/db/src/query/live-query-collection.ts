@@ -191,7 +191,7 @@ export function liveQueryCollectionOptions<
 
   // Create the sync configuration
   const sync: SyncConfig<TResult> = {
-    sync: ({ begin, write, commit }) => {
+    sync: ({ begin, write, commit, collection }) => {
       const { graph, inputs, pipeline } = maybeCompileBasePipeline()
       let messagesCount = 0
       pipeline.pipe(
@@ -237,21 +237,34 @@ export function liveQueryCollectionOptions<
                 orderByIndices.set(value, orderByIndex)
               }
 
-              if (inserts && !deletes) {
+              // Simple singular insert.
+              if (inserts && deletes === 0) {
                 write({
                   value,
                   type: `insert`,
                 })
-              } else if (inserts >= deletes) {
+              } else if (
+                // Insert & update(s) (updates are a delete & insert)
+                inserts > deletes ||
+                // Just update(s) but the item is already in the collection (so
+                // was inserted previously).
+                (inserts === deletes &&
+                  collection.has(rawKey as string | number))
+              ) {
                 write({
                   value,
                   type: `update`,
                 })
+                // Only delete is left as an option
               } else if (deletes > 0) {
                 write({
                   value,
                   type: `delete`,
                 })
+              } else {
+                throw new Error(
+                  `This should never happen ${JSON.stringify(changes)}`
+                )
               }
             })
           commit()
