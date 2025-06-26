@@ -39,7 +39,7 @@ interface PendingSyncedTransaction<T extends object = Record<string, unknown>> {
  * @template TSchema - The schema type for validation and type inference
  */
 export interface Collection<
-  T extends object,
+  T extends object = Record<string, unknown>,
   TKey extends string | number = string | number,
   TUtils extends UtilsRecord = {},
   TSchema extends StandardSchemaV1 = StandardSchemaV1,
@@ -157,7 +157,7 @@ export class SchemaValidationError extends Error {
 }
 
 export class CollectionImpl<
-  T extends object,
+  T extends object = Record<string, unknown>,
   TKey extends string | number = string | number,
   TSchema extends StandardSchemaV1 = StandardSchemaV1,
   TExplicit = unknown,
