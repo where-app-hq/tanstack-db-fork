@@ -893,6 +893,7 @@ export class CollectionImpl<
       }
 
       const events: Array<ChangeMessage<T, TKey>> = []
+      const rowUpdateMode = this.config.sync.rowUpdateMode || `partial`
 
       for (const transaction of this.pendingSyncedTransactions) {
         for (const operation of transaction.operations) {
@@ -925,12 +926,16 @@ export class CollectionImpl<
               this.syncedData.set(key, operation.value)
               break
             case `update`: {
-              const updatedValue = Object.assign(
-                {},
-                this.syncedData.get(key),
-                operation.value
-              )
-              this.syncedData.set(key, updatedValue)
+              if (rowUpdateMode === `partial`) {
+                const updatedValue = Object.assign(
+                  {},
+                  this.syncedData.get(key),
+                  operation.value
+                )
+                this.syncedData.set(key, updatedValue)
+              } else {
+                this.syncedData.set(key, operation.value)
+              }
               break
             }
             case `delete`:

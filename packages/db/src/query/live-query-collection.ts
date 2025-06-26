@@ -191,6 +191,7 @@ export function liveQueryCollectionOptions<
 
   // Create the sync configuration
   const sync: SyncConfig<TResult> = {
+    rowUpdateMode: `full`,
     sync: ({ begin, write, commit, collection: theCollection }) => {
       const { graph, inputs, pipeline } = maybeCompileBasePipeline()
       let messagesCount = 0

@@ -154,6 +154,15 @@ export interface SyncConfig<
    * @returns Record containing relation information
    */
   getSyncMetadata?: () => Record<string, unknown>
+
+  /**
+   * The row update mode used to sync to the collection.
+   * @default `partial`
+   * @description
+   * - `partial`: Updates contain only the changes to the row.
+   * - `full`: Updates contain the entire row.
+   */
+  rowUpdateMode?: `partial` | `full`
 }
 
 export interface ChangeMessage<
