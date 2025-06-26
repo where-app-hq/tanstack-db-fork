@@ -6,6 +6,7 @@ import type {
   ChangeListener,
   ChangeMessage,
   CollectionConfig,
+  CollectionInsertInput,
   Fn,
   InsertConfig,
   OperationConfig,
@@ -19,7 +20,7 @@ import type {
 import type { StandardSchemaV1 } from "@standard-schema/spec"
 
 // Store collections in memory
-export const collectionsStore = new Map<string, CollectionImpl<any, any>>()
+export const collectionsStore = new Map<string, CollectionImpl<any, any, any>>()
 
 interface PendingSyncedTransaction<T extends object = Record<string, unknown>> {
   committed: boolean
@@ -31,12 +32,14 @@ interface PendingSyncedTransaction<T extends object = Record<string, unknown>> {
  * @template T - The type of items in the collection
  * @template TKey - The type of the key for the collection
  * @template TUtils - The utilities record type
+ * @template TSchema - The schema type for validation and type inference
  */
 export interface Collection<
   T extends object = Record<string, unknown>,
   TKey extends string | number = string | number,
   TUtils extends UtilsRecord = {},
-> extends CollectionImpl<T, TKey> {
+  TSchema extends StandardSchemaV1 = StandardSchemaV1,
+> extends CollectionImpl<T, TKey, TSchema> {
   readonly utils: TUtils
 }
 
@@ -85,10 +88,16 @@ export function createCollection<
     TKey,
     TSchema
   > & { utils?: TUtils }
-): Collection<ResolveType<TExplicit, TSchema, TFallback>, TKey, TUtils> {
+): Collection<
+  ResolveType<TExplicit, TSchema, TFallback>,
+  TKey,
+  TUtils,
+  TSchema
+> {
   const collection = new CollectionImpl<
     ResolveType<TExplicit, TSchema, TFallback>,
-    TKey
+    TKey,
+    TSchema
   >(options)
 
   // Copy utils to both top level and .utils namespace
@@ -101,7 +110,8 @@ export function createCollection<
   return collection as Collection<
     ResolveType<TExplicit, TSchema, TFallback>,
     TKey,
-    TUtils
+    TUtils,
+    TSchema
   >
 }
 
@@ -137,8 +147,9 @@ export class SchemaValidationError extends Error {
 export class CollectionImpl<
   T extends object = Record<string, unknown>,
   TKey extends string | number = string | number,
+  TSchema extends StandardSchemaV1 = StandardSchemaV1,
 > {
-  public config: CollectionConfig<T, TKey, any>
+  public config: CollectionConfig<T, TKey, TSchema>
 
   // Core state - make public for testing
   public transactions: SortedMap<string, Transaction<any>>
@@ -188,7 +199,7 @@ export class CollectionImpl<
    * @param config - Configuration object for the collection
    * @throws Error if sync config is missing
    */
-  constructor(config: CollectionConfig<T, TKey, any>) {
+  constructor(config: CollectionConfig<T, TKey, TSchema>) {
     // eslint-disable-next-line
     if (!config) {
       throw new Error(`Collection requires a config`)
@@ -923,7 +934,12 @@ export class CollectionImpl<
    * // Insert with custom key
    * insert({ text: "Buy groceries" }, { key: "grocery-task" })
    */
-  insert = (data: T | Array<T>, config?: InsertConfig) => {
+  insert = (
+    data:
+      | CollectionInsertInput<T, TSchema>
+      | Array<CollectionInsertInput<T, TSchema>>,
+    config?: InsertConfig
+  ) => {
     const ambientTransaction = getActiveTransaction()
 
     // If no ambient transaction exists, check for an onInsert handler early

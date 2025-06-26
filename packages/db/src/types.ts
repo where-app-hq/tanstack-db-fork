@@ -15,6 +15,33 @@ export type InferSchemaOutput<T> = T extends StandardSchemaV1
   : Record<string, unknown>
 
 /**
+ * Helper type to extract the input type from a standard schema
+ *
+ * @internal This is used by the collection insert type system
+ */
+export type InferSchemaInput<T> = T extends StandardSchemaV1
+  ? StandardSchemaV1.InferInput<T> extends object
+    ? StandardSchemaV1.InferInput<T>
+    : Record<string, unknown>
+  : Record<string, unknown>
+
+/**
+ * Helper type to determine the insert input type based on priority:
+ * 1. Schema input type (if schema provided and not 'never')
+ * 2. Fallback to output type T
+ *
+ * @remarks
+ * This type is used internally to resolve the collection insert input type
+ * When a schema is provided, it allows partial input with defaults
+ * When no schema is provided, it falls back to the full output type
+ */
+export type CollectionInsertInput<T, TSchema> = [TSchema] extends [never]
+  ? T
+  : TSchema extends StandardSchemaV1
+    ? InferSchemaInput<TSchema>
+    : T
+
+/**
  * Helper type to determine the final type based on priority:
  * 1. Explicit generic TExplicit (if not 'unknown')
  * 2. Schema output type (if schema provided)
@@ -71,7 +98,7 @@ export interface PendingMutation<
   syncMetadata: Record<string, unknown>
   createdAt: Date
   updatedAt: Date
-  collection: Collection<T, any>
+  collection: Collection<T, any, any, any>
 }
 
 /**
@@ -132,7 +159,7 @@ export interface SyncConfig<
   TKey extends string | number = string | number,
 > {
   sync: (params: {
-    collection: Collection<T, TKey>
+    collection: Collection<T, TKey, any, any>
     begin: () => void
     write: (message: Omit<ChangeMessage<T>, `key`>) => void
     commit: () => void
