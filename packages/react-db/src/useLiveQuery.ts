@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useState } from "react"
-import {
-  createLiveQueryCollection,
-  type Collection,
-  type Context,
-  type InitialQueryBuilder,
-  type QueryBuilder,
-  type GetResult,
-  type LiveQueryCollectionConfig,
+import { createLiveQueryCollection } from "@tanstack/db"
+import type {
+  Collection,
+  Context,
+  GetResult,
+  InitialQueryBuilder,
+  LiveQueryCollectionConfig,
+  QueryBuilder,
 } from "@tanstack/db"
 
 // Overload 1: Accept just the query function
-export function useLiveQuery<
-  TContext extends Context,
->(
+export function useLiveQuery<TContext extends Context>(
   queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext>,
   deps?: Array<unknown>
 ): {
@@ -22,9 +20,7 @@ export function useLiveQuery<
 }
 
 // Overload 2: Accept config object
-export function useLiveQuery<
-  TContext extends Context,
->(
+export function useLiveQuery<TContext extends Context>(
   config: LiveQueryCollectionConfig<TContext>,
   deps?: Array<unknown>
 ): {
@@ -34,33 +30,34 @@ export function useLiveQuery<
 }
 
 // Implementation - use function overloads to infer the actual collection type
-export function useLiveQuery(
-  configOrQuery: any,
-  deps: Array<unknown> = []
-) {
+export function useLiveQuery(configOrQuery: any, deps: Array<unknown> = []) {
   const collection = useMemo(() => {
     // Ensure we always start sync for React hooks
-    if (typeof configOrQuery === 'function') {
-      return createLiveQueryCollection({ 
+    if (typeof configOrQuery === `function`) {
+      return createLiveQueryCollection({
         query: configOrQuery,
-        startSync: true 
+        startSync: true,
       })
     } else {
-      return createLiveQueryCollection({ 
+      return createLiveQueryCollection({
         ...configOrQuery,
-        startSync: true 
+        startSync: true,
       })
     }
   }, [...deps])
 
   // Infer types from the actual collection
-  type CollectionType = typeof collection extends Collection<infer T, any, any> ? T : never
-  type KeyType = typeof collection extends Collection<any, infer K, any> ? K : string | number
+  type CollectionType =
+    typeof collection extends Collection<infer T, any, any> ? T : never
+  type KeyType =
+    typeof collection extends Collection<any, infer K, any>
+      ? K
+      : string | number
 
-  const [state, setState] = useState<Map<KeyType, CollectionType>>(() => 
-    new Map(collection.entries() as any)
+  const [state, setState] = useState<Map<KeyType, CollectionType>>(
+    () => new Map(collection.entries() as any)
   )
-  const [data, setData] = useState<Array<CollectionType>>(() => 
+  const [data, setData] = useState<Array<CollectionType>>(() =>
     Array.from(collection.values() as any)
   )
 
@@ -76,7 +73,7 @@ export function useLiveQuery(
     })
 
     // Preload the collection data if not already started
-    if (collection.status === 'idle') {
+    if (collection.status === `idle`) {
       collection.preload().catch(console.error)
     }
 
