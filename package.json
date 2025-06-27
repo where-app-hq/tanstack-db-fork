@@ -73,4 +73,9 @@
     "examples/*",
     "examples/react/*"
   ],
+  "overrides": {
+    "@tanstack/db": "workspace:*",
+    "@tanstack/react-db": "workspace:*",
+    "@tanstack/vue-db": "workspace:*"
+  }
 }
