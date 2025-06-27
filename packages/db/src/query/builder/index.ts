@@ -12,7 +12,6 @@ import type {
 } from "../ir.js"
 import type {
   Context,
-  GetResult,
   GroupByCallback,
   JoinOnCallback,
   MergeContext,
@@ -31,7 +30,7 @@ export function buildQuery(
   fn: (builder: InitialQueryBuilder) => QueryBuilder<any>
 ): Query {
   const result = fn(new BaseQueryBuilder())
-  return result._getQuery()
+  return getQuery(result)
 }
 
 export class BaseQueryBuilder<TContext extends Context = Context> {
@@ -310,17 +309,27 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
   }
 }
 
+export function getQuery(
+  builder: BaseQueryBuilder | QueryBuilder<any> | InitialQueryBuilder
+): Query {
+  return (builder as unknown as BaseQueryBuilder)._getQuery()
+}
+
 // Type-only exports for the query builder
 export type InitialQueryBuilder = Pick<BaseQueryBuilder, `from`>
 
 export type QueryBuilder<TContext extends Context> = Omit<
   BaseQueryBuilder<TContext>,
-  `from`
-> & {
-  // Make sure we can access the result type
-  readonly __context: TContext
-  readonly __result: GetResult<TContext>
-}
+  `from` | `_getQuery`
+>
+
+// Helper type to extract context from a QueryBuilder
+export type ExtractContext<T> =
+  T extends BaseQueryBuilder<infer TContext>
+    ? TContext
+    : T extends QueryBuilder<infer TContext>
+      ? TContext
+      : never
 
 // Export the types from types.ts for convenience
 export type { Context, Source, GetResult } from "./types.js"

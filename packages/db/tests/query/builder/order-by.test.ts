@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
-import { BaseQueryBuilder } from "../../../src/query/builder/index.js"
+import { BaseQueryBuilder, getQuery } from "../../../src/query/builder/index.js"
 import { eq, upper } from "../../../src/query/builder/functions.js"
 
 // Test schema
@@ -30,7 +30,7 @@ describe(`QueryBuilder.orderBy`, () => {
         name: employees.name,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.orderBy).toBeDefined()
     expect(builtQuery.orderBy).toHaveLength(1)
     expect(builtQuery.orderBy![0]!.expression.type).toBe(`ref`)
@@ -51,7 +51,7 @@ describe(`QueryBuilder.orderBy`, () => {
         salary: employees.salary,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.orderBy).toBeDefined()
     expect(builtQuery.orderBy).toHaveLength(1)
     expect((builtQuery.orderBy![0]!.expression as any).path).toEqual([
@@ -67,7 +67,7 @@ describe(`QueryBuilder.orderBy`, () => {
       .from({ employees: employeesCollection })
       .orderBy(({ employees }) => employees.hire_date, `asc`)
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.orderBy).toBeDefined()
     expect(builtQuery.orderBy).toHaveLength(1)
   })
@@ -83,7 +83,7 @@ describe(`QueryBuilder.orderBy`, () => {
         salary: employees.salary,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.orderBy).toBeDefined()
     expect(builtQuery.orderBy).toHaveLength(1)
   })
@@ -98,7 +98,7 @@ describe(`QueryBuilder.orderBy`, () => {
         name: employees.name,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.orderBy).toBeDefined()
     expect(builtQuery.orderBy).toHaveLength(1)
     // The function expression gets wrapped, so we check if it contains the function
@@ -120,7 +120,7 @@ describe(`QueryBuilder.orderBy`, () => {
         salary: employees.salary,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.where).toBeDefined()
     expect(builtQuery.orderBy).toBeDefined()
     expect(builtQuery.limit).toBe(10)
@@ -134,7 +134,7 @@ describe(`QueryBuilder.orderBy`, () => {
       .orderBy(({ employees }) => employees.name)
       .orderBy(({ employees }) => employees.salary, `desc`) // This should be added
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.orderBy).toBeDefined()
     expect(builtQuery.orderBy).toHaveLength(2)
     expect((builtQuery.orderBy![0]!.expression as any).path).toEqual([
@@ -162,7 +162,7 @@ describe(`QueryBuilder.orderBy`, () => {
         hire_date: employees.hire_date,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.orderBy).toBeDefined()
     expect(builtQuery.limit).toBe(20)
     expect(builtQuery.offset).toBe(10)

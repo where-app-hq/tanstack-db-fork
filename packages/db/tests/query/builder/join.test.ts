@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
-import { BaseQueryBuilder } from "../../../src/query/builder/index.js"
+import { BaseQueryBuilder, getQuery } from "../../../src/query/builder/index.js"
 import { and, eq, gt } from "../../../src/query/builder/functions.js"
 
 // Test schema
@@ -42,7 +42,7 @@ describe(`QueryBuilder.join`, () => {
           eq(employees.department_id, departments.id)
       )
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.join).toBeDefined()
     expect(builtQuery.join).toHaveLength(1)
 
@@ -78,7 +78,7 @@ describe(`QueryBuilder.join`, () => {
         eq(departments.id, projects.department_id)
       )
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.join).toBeDefined()
     expect(builtQuery.join).toHaveLength(2)
 
@@ -105,7 +105,7 @@ describe(`QueryBuilder.join`, () => {
         department_budget: departments.budget,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`id`)
     expect(builtQuery.select).toHaveProperty(`name`)
@@ -124,7 +124,7 @@ describe(`QueryBuilder.join`, () => {
       )
       .where(({ departments }) => gt(departments.budget, 1000000))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.where).toBeDefined()
     expect((builtQuery.where as any)?.name).toBe(`gt`)
   })
@@ -141,7 +141,7 @@ describe(`QueryBuilder.join`, () => {
         eq(employees.department_id, (bigDepts as any).id)
       )
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.join).toBeDefined()
     expect(builtQuery.join).toHaveLength(1)
 
@@ -169,7 +169,7 @@ describe(`QueryBuilder.join`, () => {
         dept_location: departments.location,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.from).toBeDefined()
     expect(builtQuery.join).toBeDefined()
     expect(builtQuery.join).toHaveLength(1)
@@ -202,7 +202,7 @@ describe(`QueryBuilder.join`, () => {
         eq(employees.id, users.employee_id)
       )
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.join).toBeDefined()
     expect(builtQuery.join).toHaveLength(2)
 
@@ -227,7 +227,7 @@ describe(`QueryBuilder.join`, () => {
         department: departments,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`employee`)
     expect(builtQuery.select).toHaveProperty(`department`)

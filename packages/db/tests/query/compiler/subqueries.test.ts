@@ -3,6 +3,7 @@ import { D2, MultiSet, output } from "@electric-sql/d2mini"
 import {
   BaseQueryBuilder,
   buildQuery,
+  getQuery,
 } from "../../../src/query/builder/index.js"
 import { compileQuery } from "../../../src/query/compiler/index.js"
 import { CollectionImpl } from "../../../src/collection.js"
@@ -140,7 +141,7 @@ describe(`Query2 Subqueries`, () => {
           status: filteredIssues.status,
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
 
       // Verify the IR structure
       expect(builtQuery.from.type).toBe(`queryRef`)
@@ -167,7 +168,7 @@ describe(`Query2 Subqueries`, () => {
           status: filteredIssues.status,
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
 
       // Compile and execute the query
       const graph = new D2()
@@ -223,7 +224,7 @@ describe(`Query2 Subqueries`, () => {
           userName: activeUser.name,
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
 
       // Verify the IR structure
       expect(builtQuery.from.type).toBe(`collectionRef`)
@@ -258,7 +259,7 @@ describe(`Query2 Subqueries`, () => {
           userName: activeUser.name,
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
 
       // Compile and execute the query
       const graph = new D2()
@@ -360,7 +361,7 @@ describe(`Query2 Subqueries`, () => {
           avgDuration: avg(issue.duration),
         }))
 
-      const builtQuery = allAggregate._getQuery()
+      const builtQuery = getQuery(allAggregate)
 
       // Execute the aggregate query
       const graph = new D2()

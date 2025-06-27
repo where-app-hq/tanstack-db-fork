@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
-import { BaseQueryBuilder } from "../../../src/query/builder/index.js"
+import { BaseQueryBuilder, getQuery } from "../../../src/query/builder/index.js"
 import { avg, count, eq, sum } from "../../../src/query/builder/functions.js"
 
 // Test schema
@@ -30,7 +30,7 @@ describe(`QueryBuilder.groupBy`, () => {
         count: count(employees.id),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.groupBy).toBeDefined()
     expect(builtQuery.groupBy).toHaveLength(1)
     expect(builtQuery.groupBy![0]!.type).toBe(`ref`)
@@ -47,7 +47,7 @@ describe(`QueryBuilder.groupBy`, () => {
         count: count(employees.id),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.groupBy).toBeDefined()
     expect(builtQuery.groupBy).toHaveLength(2)
     expect(builtQuery.groupBy![0]!.type).toBe(`ref`)
@@ -66,7 +66,7 @@ describe(`QueryBuilder.groupBy`, () => {
         total_salary: sum(employees.salary),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.groupBy).toBeDefined()
     expect(builtQuery.select).toBeDefined()
 
@@ -87,7 +87,7 @@ describe(`QueryBuilder.groupBy`, () => {
         active_count: count(employees.id),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.where).toBeDefined()
     expect(builtQuery.groupBy).toBeDefined()
     expect(builtQuery.select).toBeDefined()
@@ -104,7 +104,7 @@ describe(`QueryBuilder.groupBy`, () => {
         count: count(employees.id),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.groupBy).toBeDefined()
     expect(builtQuery.having).toBeDefined()
     expect(builtQuery.select).toBeDefined()
@@ -121,7 +121,7 @@ describe(`QueryBuilder.groupBy`, () => {
         count: count(employees.id),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.groupBy).toBeDefined()
     expect(builtQuery.groupBy).toHaveLength(1)
     expect((builtQuery.groupBy![0] as any).path).toEqual([
@@ -141,7 +141,7 @@ describe(`QueryBuilder.groupBy`, () => {
         count: count(employees.id),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.groupBy).toBeDefined()
     expect(builtQuery.groupBy).toHaveLength(2)
   })

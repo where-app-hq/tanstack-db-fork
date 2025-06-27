@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
-import { BaseQueryBuilder } from "../../../src/query/builder/index.js"
+import { BaseQueryBuilder, getQuery } from "../../../src/query/builder/index.js"
 import { avg, count, eq, upper } from "../../../src/query/builder/functions.js"
 
 // Test schema
@@ -29,7 +29,7 @@ describe(`QueryBuilder.select`, () => {
         name: employees.name,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(typeof builtQuery.select).toBe(`object`)
     expect(builtQuery.select).toHaveProperty(`id`)
@@ -46,7 +46,7 @@ describe(`QueryBuilder.select`, () => {
         salary_doubled: employees.salary,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`employee_name`)
     expect(builtQuery.select).toHaveProperty(`salary_doubled`)
@@ -61,7 +61,7 @@ describe(`QueryBuilder.select`, () => {
         upper_name: upper(employees.name),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`upper_name`)
     const upperNameExpr = (builtQuery.select as any).upper_name
@@ -80,7 +80,7 @@ describe(`QueryBuilder.select`, () => {
         avg_salary: avg(employees.salary),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`count`)
     expect(builtQuery.select).toHaveProperty(`avg_salary`)
@@ -99,7 +99,7 @@ describe(`QueryBuilder.select`, () => {
         salary: employees.salary,
       })) // This should override the previous select
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`id`)
     expect(builtQuery.select).toHaveProperty(`salary`)
@@ -114,7 +114,7 @@ describe(`QueryBuilder.select`, () => {
         employee: employees,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`employee`)
   })
@@ -132,7 +132,7 @@ describe(`QueryBuilder.select`, () => {
         upper_name: upper(employees.name),
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`basicInfo`)
     expect(builtQuery.select).toHaveProperty(`salary`)
@@ -150,7 +150,7 @@ describe(`QueryBuilder.select`, () => {
         salary: employees.salary,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.where).toBeDefined()
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`id`)
@@ -168,7 +168,7 @@ describe(`QueryBuilder.select`, () => {
         is_high_earner: employees.salary, // Would need conditional logic in actual implementation
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
     expect(builtQuery.select).toBeDefined()
     expect(builtQuery.select).toHaveProperty(`is_high_earner`)
   })

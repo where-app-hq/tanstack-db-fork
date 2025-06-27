@@ -2,6 +2,7 @@ import { describe, expectTypeOf, test } from "vitest"
 import { BaseQueryBuilder } from "../../../src/query/builder/index.js"
 import { CollectionImpl } from "../../../src/collection.js"
 import { avg, count, eq } from "../../../src/query/builder/functions.js"
+import type { ExtractContext } from "../../../src/query/builder/index.js"
 import type { GetResult } from "../../../src/query/builder/types.js"
 
 // Test schema types
@@ -43,7 +44,7 @@ describe(`Subquery Types`, () => {
 
       // Check that the baseQuery has the correct result type
       expectTypeOf<
-        GetResult<(typeof _baseQuery)[`__context`]>
+        GetResult<ExtractContext<typeof _baseQuery>>
       >().toEqualTypeOf<Issue>()
     })
 
@@ -95,7 +96,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof _query)[`__context`]>
+      type QueryResult = GetResult<ExtractContext<typeof _query>>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         id: number
         title: string
@@ -122,7 +123,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof _query)[`__context`]>
+      type QueryResult = GetResult<ExtractContext<typeof _query>>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         issueId: number
         issueTitle: string
@@ -151,7 +152,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof _query)[`__context`]>
+      type QueryResult = GetResult<ExtractContext<typeof _query>>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         issueId: number
         userName: string | undefined
@@ -174,7 +175,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type AggregateResult = GetResult<(typeof _allAggregate)[`__context`]>
+      type AggregateResult = GetResult<ExtractContext<typeof _allAggregate>>
       expectTypeOf<AggregateResult>().toEqualTypeOf<{
         count: number
         avgDuration: number
@@ -197,7 +198,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type GroupedResult = GetResult<(typeof _byStatusAggregate)[`__context`]>
+      type GroupedResult = GetResult<ExtractContext<typeof _byStatusAggregate>>
       expectTypeOf<GroupedResult>().toEqualTypeOf<{
         status: `open` | `in_progress` | `closed`
         count: number
@@ -227,7 +228,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof _query)[`__context`]>
+      type QueryResult = GetResult<ExtractContext<typeof _query>>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         id: number
         title: string
@@ -253,7 +254,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof _query)[`__context`]>
+      type QueryResult = GetResult<ExtractContext<typeof _query>>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         issueId: number
         userName: string | undefined
@@ -277,7 +278,7 @@ describe(`Subquery Types`, () => {
         }))
 
       // Verify the result type
-      type QueryResult = GetResult<(typeof _query)[`__context`]>
+      type QueryResult = GetResult<ExtractContext<typeof _query>>
       expectTypeOf<QueryResult>().toEqualTypeOf<{
         issueId: number
         userName: string | undefined

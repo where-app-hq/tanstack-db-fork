@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
-import { BaseQueryBuilder } from "../../../src/query/builder/index.js"
+import { BaseQueryBuilder, getQuery } from "../../../src/query/builder/index.js"
 import {
   add,
   and,
@@ -51,7 +51,7 @@ describe(`QueryBuilder Functions`, () => {
         .from({ employees: employeesCollection })
         .where(({ employees }) => eq(employees.id, 1))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect(builtQuery.where).toBeDefined()
       expect((builtQuery.where as any)?.name).toBe(`eq`)
     })
@@ -62,7 +62,7 @@ describe(`QueryBuilder Functions`, () => {
         .from({ employees: employeesCollection })
         .where(({ employees }) => gt(employees.salary, 50000))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect((builtQuery.where as any)?.name).toBe(`gt`)
     })
 
@@ -72,7 +72,7 @@ describe(`QueryBuilder Functions`, () => {
         .from({ employees: employeesCollection })
         .where(({ employees }) => lt(employees.salary, 100000))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect((builtQuery.where as any)?.name).toBe(`lt`)
     })
 
@@ -82,7 +82,7 @@ describe(`QueryBuilder Functions`, () => {
         .from({ employees: employeesCollection })
         .where(({ employees }) => gte(employees.salary, 50000))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect((builtQuery.where as any)?.name).toBe(`gte`)
     })
 
@@ -92,7 +92,7 @@ describe(`QueryBuilder Functions`, () => {
         .from({ employees: employeesCollection })
         .where(({ employees }) => lte(employees.salary, 100000))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect((builtQuery.where as any)?.name).toBe(`lte`)
     })
   })
@@ -106,7 +106,7 @@ describe(`QueryBuilder Functions`, () => {
           and(eq(employees.active, true), gt(employees.salary, 50000))
         )
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect((builtQuery.where as any)?.name).toBe(`and`)
     })
 
@@ -118,7 +118,7 @@ describe(`QueryBuilder Functions`, () => {
           or(eq(employees.department_id, 1), eq(employees.department_id, 2))
         )
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect((builtQuery.where as any)?.name).toBe(`or`)
     })
 
@@ -128,7 +128,7 @@ describe(`QueryBuilder Functions`, () => {
         .from({ employees: employeesCollection })
         .where(({ employees }) => not(eq(employees.active, false)))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect((builtQuery.where as any)?.name).toBe(`not`)
     })
   })
@@ -143,7 +143,7 @@ describe(`QueryBuilder Functions`, () => {
           upper_name: upper(employees.name),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect(builtQuery.select).toBeDefined()
       const select = builtQuery.select!
       expect(select).toHaveProperty(`upper_name`)
@@ -159,7 +159,7 @@ describe(`QueryBuilder Functions`, () => {
           lower_name: lower(employees.name),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       const select = builtQuery.select!
       expect((select.lower_name as any).name).toBe(`lower`)
     })
@@ -173,7 +173,7 @@ describe(`QueryBuilder Functions`, () => {
           name_length: length(employees.name),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       const select = builtQuery.select!
       expect((select.name_length as any).name).toBe(`length`)
     })
@@ -184,7 +184,7 @@ describe(`QueryBuilder Functions`, () => {
         .from({ employees: employeesCollection })
         .where(({ employees }) => like(employees.name, `%John%`))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect((builtQuery.where as any)?.name).toBe(`like`)
     })
   })
@@ -199,7 +199,7 @@ describe(`QueryBuilder Functions`, () => {
           full_name: concat([employees.first_name, ` `, employees.last_name]),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       const select = builtQuery.select!
       expect((select.full_name as any).name).toBe(`concat`)
     })
@@ -213,7 +213,7 @@ describe(`QueryBuilder Functions`, () => {
           name_or_default: coalesce([employees.name, `Unknown`]),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       const select = builtQuery.select!
       expect((select.name_or_default as any).name).toBe(`coalesce`)
     })
@@ -224,7 +224,7 @@ describe(`QueryBuilder Functions`, () => {
         .from({ employees: employeesCollection })
         .where(({ employees }) => isInFunc(employees.department_id, [1, 2, 3]))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       expect((builtQuery.where as any)?.name).toBe(`in`)
     })
   })
@@ -240,7 +240,7 @@ describe(`QueryBuilder Functions`, () => {
           employee_count: count(employees.id),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       const select = builtQuery.select!
       expect(select).toHaveProperty(`employee_count`)
       expect((select.employee_count as any).type).toBe(`agg`)
@@ -257,7 +257,7 @@ describe(`QueryBuilder Functions`, () => {
           avg_salary: avg(employees.salary),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       const select = builtQuery.select!
       expect((select.avg_salary as any).name).toBe(`avg`)
     })
@@ -272,7 +272,7 @@ describe(`QueryBuilder Functions`, () => {
           total_salary: sum(employees.salary),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       const select = builtQuery.select!
       expect((select.total_salary as any).name).toBe(`sum`)
     })
@@ -288,7 +288,7 @@ describe(`QueryBuilder Functions`, () => {
           max_salary: max(employees.salary),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       const select = builtQuery.select!
       expect((select.min_salary as any).name).toBe(`min`)
       expect((select.max_salary as any).name).toBe(`max`)
@@ -305,7 +305,7 @@ describe(`QueryBuilder Functions`, () => {
           salary_plus_bonus: add(employees.salary, 1000),
         }))
 
-      const builtQuery = query._getQuery()
+      const builtQuery = getQuery(query)
       const select = builtQuery.select!
       expect((select.salary_plus_bonus as any).name).toBe(`add`)
     })

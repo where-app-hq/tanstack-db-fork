@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { CollectionImpl } from "../../../src/collection.js"
-import { BaseQueryBuilder } from "../../../src/query/builder/index.js"
+import { BaseQueryBuilder, getQuery } from "../../../src/query/builder/index.js"
 import { eq } from "../../../src/query/builder/functions.js"
 
 // Test schema
@@ -36,7 +36,7 @@ describe(`QueryBuilder.from`, () => {
   it(`sets the from clause correctly with collection`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder.from({ employees: employeesCollection })
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
 
     expect(builtQuery.from).toBeDefined()
     expect(builtQuery.from.type).toBe(`collectionRef`)
@@ -56,7 +56,7 @@ describe(`QueryBuilder.from`, () => {
         name: employees.name,
       }))
 
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
 
     expect(builtQuery.from).toBeDefined()
     expect(builtQuery.where).toBeDefined()
@@ -66,7 +66,7 @@ describe(`QueryBuilder.from`, () => {
   it(`supports different collection aliases`, () => {
     const builder = new BaseQueryBuilder()
     const query = builder.from({ emp: employeesCollection })
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
 
     expect(builtQuery.from.alias).toBe(`emp`)
   })
@@ -78,7 +78,7 @@ describe(`QueryBuilder.from`, () => {
 
     const builder = new BaseQueryBuilder()
     const query = builder.from({ activeEmployees: subQuery as any })
-    const builtQuery = query._getQuery()
+    const builtQuery = getQuery(query)
 
     expect(builtQuery.from).toBeDefined()
     expect(builtQuery.from.type).toBe(`queryRef`)
