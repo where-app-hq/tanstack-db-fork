@@ -29,22 +29,56 @@ export function useLiveQuery<TContext extends Context>(
   collection: Collection<GetResult<TContext>, string | number, {}>
 }
 
+// Overload 3: Accept pre-created live query collection
+export function useLiveQuery<
+  TResult extends object,
+  TKey extends string | number,
+  TUtils extends Record<string, any>,
+>(
+  liveQueryCollection: Collection<TResult, TKey, TUtils>
+): {
+  state: Map<TKey, TResult>
+  data: Array<TResult>
+  collection: Collection<TResult, TKey, TUtils>
+}
+
 // Implementation - use function overloads to infer the actual collection type
-export function useLiveQuery(configOrQuery: any, deps: Array<unknown> = []) {
-  const collection = useMemo(() => {
-    // Ensure we always start sync for React hooks
-    if (typeof configOrQuery === `function`) {
-      return createLiveQueryCollection({
-        query: configOrQuery,
-        startSync: true,
-      })
-    } else {
-      return createLiveQueryCollection({
-        ...configOrQuery,
-        startSync: true,
-      })
-    }
-  }, [...deps])
+export function useLiveQuery(
+  configOrQueryOrCollection: any,
+  deps: Array<unknown> = []
+) {
+  // Check if it's already a collection by checking for specific collection methods
+  const isCollection =
+    configOrQueryOrCollection &&
+    typeof configOrQueryOrCollection === "object" &&
+    typeof configOrQueryOrCollection.subscribeChanges === "function" &&
+    typeof configOrQueryOrCollection.startSyncImmediate === "function" &&
+    typeof configOrQueryOrCollection.id === "string"
+
+  const collection = useMemo(
+    () => {
+      if (isCollection) {
+        // It's already a collection, ensure sync is started for React hooks
+        configOrQueryOrCollection.startSyncImmediate()
+        return configOrQueryOrCollection
+      }
+
+      // Original logic for creating collections
+      // Ensure we always start sync for React hooks
+      if (typeof configOrQueryOrCollection === `function`) {
+        return createLiveQueryCollection({
+          query: configOrQueryOrCollection,
+          startSync: true,
+        })
+      } else {
+        return createLiveQueryCollection({
+          ...configOrQueryOrCollection,
+          startSync: true,
+        })
+      }
+    },
+    isCollection ? [configOrQueryOrCollection] : [...deps]
+  )
 
   // Infer types from the actual collection
   type CollectionType =

@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react"
 import {
   count,
   createCollection,
+  createLiveQueryCollection,
   createOptimisticAction,
   eq,
   gt,
@@ -784,4 +785,149 @@ describe(`Query Collections`, () => {
       title: `New Issue`,
     })
   })
+
+  it(`should accept pre-created live query collection`, async () => {
+    const collection = createCollection(
+      mockSyncCollectionOptions<Person>({
+        id: `pre-created-collection-test`,
+        getKey: (person: Person) => person.id,
+        initialData: initialPersons,
+      })
+    )
+
+    // Create a live query collection beforehand
+    const liveQueryCollection = createLiveQueryCollection({
+      query: (q) =>
+        q
+          .from({ persons: collection })
+          .where(({ persons }) => gt(persons.age, 30))
+          .select(({ persons }) => ({
+            id: persons.id,
+            name: persons.name,
+            age: persons.age,
+          })),
+      startSync: true,
+    })
+
+    const { result } = renderHook(() => {
+      return useLiveQuery(liveQueryCollection)
+    })
+
+    // Wait for collection to sync and state to update
+    await waitFor(() => {
+      expect(result.current.state.size).toBe(1) // Only John Smith (age 35)
+    })
+    expect(result.current.data).toHaveLength(1)
+
+    const johnSmith = result.current.data[0]
+    expect(johnSmith).toMatchObject({
+      id: `3`,
+      name: `John Smith`,
+      age: 35,
+    })
+
+    // Verify that the returned collection is the same instance
+    expect(result.current.collection).toBe(liveQueryCollection)
+  })
+
+  it(`should switch to a different pre-created live query collection when changed`, async () => {
+    const collection1 = createCollection(
+      mockSyncCollectionOptions<Person>({
+        id: `collection-1`,
+        getKey: (person: Person) => person.id,
+        initialData: initialPersons,
+      })
+    )
+
+    const collection2 = createCollection(
+      mockSyncCollectionOptions<Person>({
+        id: `collection-2`,
+        getKey: (person: Person) => person.id,
+        initialData: [
+          {
+            id: `4`,
+            name: `Alice Cooper`,
+            age: 45,
+            email: `alice.cooper@example.com`,
+            isActive: true,
+            team: `team3`,
+          },
+          {
+            id: `5`,
+            name: `Bob Dylan`,
+            age: 50,
+            email: `bob.dylan@example.com`,
+            isActive: true,
+            team: `team3`,
+          },
+        ],
+      })
+    )
+
+    // Create two different live query collections
+    const liveQueryCollection1 = createLiveQueryCollection({
+      query: (q) =>
+        q
+          .from({ persons: collection1 })
+          .where(({ persons }) => gt(persons.age, 30))
+          .select(({ persons }) => ({
+            id: persons.id,
+            name: persons.name,
+          })),
+      startSync: true,
+    })
+
+    const liveQueryCollection2 = createLiveQueryCollection({
+      query: (q) =>
+        q
+          .from({ persons: collection2 })
+          .where(({ persons }) => gt(persons.age, 40))
+          .select(({ persons }) => ({
+            id: persons.id,
+            name: persons.name,
+          })),
+      startSync: true,
+    })
+
+    const { result, rerender } = renderHook(
+      ({ collection }: { collection: any }) => {
+        return useLiveQuery(collection)
+      },
+      { initialProps: { collection: liveQueryCollection1 } }
+    )
+
+    // Wait for first collection to sync
+    await waitFor(() => {
+      expect(result.current.state.size).toBe(1) // Only John Smith from collection1
+    })
+    expect(result.current.state.get(`3`)).toMatchObject({
+      id: `3`,
+      name: `John Smith`,
+    })
+    expect(result.current.collection).toBe(liveQueryCollection1)
+
+    // Switch to the second collection
+    act(() => {
+      rerender({ collection: liveQueryCollection2 })
+    })
+
+    // Wait for second collection to sync
+    await waitFor(() => {
+      expect(result.current.state.size).toBe(2) // Alice and Bob from collection2
+    })
+    expect(result.current.state.get(`4`)).toMatchObject({
+      id: `4`,
+      name: `Alice Cooper`,
+    })
+    expect(result.current.state.get(`5`)).toMatchObject({
+      id: `5`,
+      name: `Bob Dylan`,
+    })
+    expect(result.current.collection).toBe(liveQueryCollection2)
+
+    // Verify we no longer have data from the first collection
+    expect(result.current.state.get(`3`)).toBeUndefined()
+  })
+
+
 })
