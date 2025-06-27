@@ -122,7 +122,9 @@ export function useLiveQuery(
 
     // Update initial state function
     const updateState = () => {
-      const newEntries = new Map(currentCollection.entries())
+      const newEntries = new Map<string | number, any>(
+        currentCollection.entries()
+      )
       const newData = Array.from(currentCollection.values())
 
       // Force Vue reactivity by creating new references
