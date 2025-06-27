@@ -928,6 +928,4 @@ describe(`Query Collections`, () => {
     // Verify we no longer have data from the first collection
     expect(result.current.state.get(`3`)).toBeUndefined()
   })
-
-
 })

@@ -23,6 +23,16 @@ export interface UseLiveQueryReturn<T extends object> {
   collection: ComputedRef<Collection<T, string | number, {}>>
 }
 
+export interface UseLiveQueryReturnWithCollection<
+  T extends object,
+  TKey extends string | number,
+  TUtils extends Record<string, any>,
+> {
+  state: ComputedRef<Map<TKey, T>>
+  data: ComputedRef<Array<T>>
+  collection: ComputedRef<Collection<T, TKey, TUtils>>
+}
+
 // Overload 1: Accept just the query function
 export function useLiveQuery<TContext extends Context>(
   queryFn: (q: InitialQueryBuilder) => QueryBuilder<TContext>,
@@ -35,24 +45,60 @@ export function useLiveQuery<TContext extends Context>(
   deps?: Array<MaybeRefOrGetter<unknown>>
 ): UseLiveQueryReturn<GetResult<TContext>>
 
+// Overload 3: Accept pre-created live query collection (can be reactive)
+export function useLiveQuery<
+  TResult extends object,
+  TKey extends string | number,
+  TUtils extends Record<string, any>,
+>(
+  liveQueryCollection: MaybeRefOrGetter<Collection<TResult, TKey, TUtils>>
+): UseLiveQueryReturnWithCollection<TResult, TKey, TUtils>
+
 // Implementation
 export function useLiveQuery(
-  configOrQuery: any,
+  configOrQueryOrCollection: any,
   deps: Array<MaybeRefOrGetter<unknown>> = []
-): UseLiveQueryReturn<any> {
+): UseLiveQueryReturn<any> | UseLiveQueryReturnWithCollection<any, any, any> {
   const collection = computed(() => {
+    // First check if the original parameter might be a ref/getter
+    // by seeing if toValue returns something different than the original
+    let unwrappedParam = configOrQueryOrCollection
+    try {
+      const potentiallyUnwrapped = toValue(configOrQueryOrCollection)
+      if (potentiallyUnwrapped !== configOrQueryOrCollection) {
+        unwrappedParam = potentiallyUnwrapped
+      }
+    } catch {
+      // If toValue fails, use original parameter
+      unwrappedParam = configOrQueryOrCollection
+    }
+
+    // Check if it's already a collection by checking for specific collection methods
+    const isCollection =
+      unwrappedParam &&
+      typeof unwrappedParam === `object` &&
+      typeof unwrappedParam.subscribeChanges === `function` &&
+      typeof unwrappedParam.startSyncImmediate === `function` &&
+      typeof unwrappedParam.id === `string`
+
+    if (isCollection) {
+      // It's already a collection, ensure sync is started for Vue hooks
+      unwrappedParam.startSyncImmediate()
+      return unwrappedParam
+    }
+
     // Reference deps to make computed reactive to them
     deps.forEach((dep) => toValue(dep))
 
     // Ensure we always start sync for Vue hooks
-    if (typeof configOrQuery === `function`) {
+    if (typeof unwrappedParam === `function`) {
       return createLiveQueryCollection({
-        query: configOrQuery,
+        query: unwrappedParam,
         startSync: true,
       })
     } else {
       return createLiveQueryCollection({
-        ...configOrQuery,
+        ...unwrappedParam,
         startSync: true,
       })
     }

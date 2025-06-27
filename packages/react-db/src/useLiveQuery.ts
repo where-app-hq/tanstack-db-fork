@@ -50,10 +50,10 @@ export function useLiveQuery(
   // Check if it's already a collection by checking for specific collection methods
   const isCollection =
     configOrQueryOrCollection &&
-    typeof configOrQueryOrCollection === "object" &&
-    typeof configOrQueryOrCollection.subscribeChanges === "function" &&
-    typeof configOrQueryOrCollection.startSyncImmediate === "function" &&
-    typeof configOrQueryOrCollection.id === "string"
+    typeof configOrQueryOrCollection === `object` &&
+    typeof configOrQueryOrCollection.subscribeChanges === `function` &&
+    typeof configOrQueryOrCollection.startSyncImmediate === `function` &&
+    typeof configOrQueryOrCollection.id === `string`
 
   const collection = useMemo(
     () => {
@@ -112,6 +112,6 @@ export function useLiveQuery(
   return {
     state,
     data,
-    collection: collection as any,
+    collection: collection,
   }
 }

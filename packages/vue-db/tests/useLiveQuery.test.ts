@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   count,
   createCollection,
+  createLiveQueryCollection,
   createOptimisticAction,
   eq,
   gt,
@@ -676,5 +677,146 @@ describe(`Query Collections`, () => {
       name: `John Doe`,
       title: `New Issue`,
     })
+  })
+
+  it(`should accept pre-created live query collection`, async () => {
+    const collection = createCollection(
+      mockSyncCollectionOptions<Person>({
+        id: `pre-created-collection-test-vue`,
+        getKey: (person: Person) => person.id,
+        initialData: initialPersons,
+      })
+    )
+
+    // Create a live query collection beforehand
+    const liveQueryCollection = createLiveQueryCollection({
+      query: (q) =>
+        q
+          .from({ persons: collection })
+          .where(({ persons }) => gt(persons.age, 30))
+          .select(({ persons }) => ({
+            id: persons.id,
+            name: persons.name,
+            age: persons.age,
+          })),
+      startSync: true,
+    })
+
+    const {
+      state,
+      data,
+      collection: returnedCollection,
+    } = useLiveQuery(liveQueryCollection)
+
+    // Wait for collection to sync and state to update
+    await waitForVueUpdate()
+
+    expect(state.value.size).toBe(1) // Only John Smith (age 35)
+    expect(data.value).toHaveLength(1)
+
+    const johnSmith = data.value[0]
+    expect(johnSmith).toMatchObject({
+      id: `3`,
+      name: `John Smith`,
+      age: 35,
+    })
+
+    // Verify that the returned collection is the same instance
+    expect(returnedCollection.value).toBe(liveQueryCollection)
+  })
+
+  it(`should switch to a different pre-created live query collection when reactive ref changes`, async () => {
+    const collection1 = createCollection(
+      mockSyncCollectionOptions<Person>({
+        id: `collection-1-vue`,
+        getKey: (person: Person) => person.id,
+        initialData: initialPersons,
+      })
+    )
+
+    const collection2 = createCollection(
+      mockSyncCollectionOptions<Person>({
+        id: `collection-2-vue`,
+        getKey: (person: Person) => person.id,
+        initialData: [
+          {
+            id: `4`,
+            name: `Alice Cooper`,
+            age: 45,
+            email: `alice.cooper@example.com`,
+            isActive: true,
+            team: `team3`,
+          },
+          {
+            id: `5`,
+            name: `Bob Dylan`,
+            age: 50,
+            email: `bob.dylan@example.com`,
+            isActive: true,
+            team: `team3`,
+          },
+        ],
+      })
+    )
+
+    // Create two different live query collections
+    const liveQueryCollection1 = createLiveQueryCollection({
+      query: (q) =>
+        q
+          .from({ persons: collection1 })
+          .where(({ persons }) => gt(persons.age, 30))
+          .select(({ persons }) => ({
+            id: persons.id,
+            name: persons.name,
+          })),
+      startSync: true,
+    })
+
+    const liveQueryCollection2 = createLiveQueryCollection({
+      query: (q) =>
+        q
+          .from({ persons: collection2 })
+          .where(({ persons }) => gt(persons.age, 40))
+          .select(({ persons }) => ({
+            id: persons.id,
+            name: persons.name,
+          })),
+      startSync: true,
+    })
+
+    // Use a reactive ref that can change - this is the proper Vue pattern
+    const currentCollection = ref(liveQueryCollection1 as any)
+    const { state, collection: returnedCollection } =
+      useLiveQuery(currentCollection)
+
+    // Wait for first collection to sync
+    await waitForVueUpdate()
+
+    expect(state.value.size).toBe(1) // Only John Smith from collection1
+    expect(state.value.get(`3`)).toMatchObject({
+      id: `3`,
+      name: `John Smith`,
+    })
+    expect(returnedCollection.value.id).toBe(liveQueryCollection1.id)
+
+    // Switch to the second collection by updating the reactive ref
+    currentCollection.value = liveQueryCollection2 as any
+
+    // Wait for the reactive change to propagate
+    await waitForVueUpdate()
+
+    expect(state.value.size).toBe(2) // Alice and Bob from collection2
+    expect(state.value.get(`4`)).toMatchObject({
+      id: `4`,
+      name: `Alice Cooper`,
+    })
+    expect(state.value.get(`5`)).toMatchObject({
+      id: `5`,
+      name: `Bob Dylan`,
+    })
+    expect(returnedCollection.value.id).toBe(liveQueryCollection2.id)
+
+    // Verify we no longer have data from the first collection
+    expect(state.value.get(`3`)).toBeUndefined()
   })
 })
