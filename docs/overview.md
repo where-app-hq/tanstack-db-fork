@@ -390,7 +390,7 @@ const mutationFn: MutationFn = async ({ transaction }) => {
 Use `createOptimisticAction` with your `mutationFn` and `onMutate` functions to create an action that you can use to mutate data in your components in fully custom ways:
 
 ```tsx
-import { createOptimisticAction } from '@tanstack/react-db'
+import { createOptimisticAction } from '@tanstack/db'
 
 // Create the `addTodo` action, passing in your `mutationFn` and `onMutate`.
 const addTodo = createOptimisticAction<string>({

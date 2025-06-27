@@ -34,7 +34,7 @@
 
   ```diff
   -import { useOptimisticMutation } from '@tanstack/react-db'
-  +import { createOptimisticAction } from '@tanstack/react-db'
+  +import { createOptimisticAction } from '@tanstack/db'
   +
   +// Create the `addTodo` action, passing in your `mutationFn` and `onMutate`.
   +const addTodo = createOptimisticAction<string>({
