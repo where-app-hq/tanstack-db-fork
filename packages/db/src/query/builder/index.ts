@@ -41,7 +41,22 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     this.query = { ...query }
   }
 
-  // FROM method - only available on initial builder
+  /**
+   * Specify the source table or subquery for the query
+   *
+   * @param source - An object with a single key-value pair where the key is the table alias and the value is a Collection or subquery
+   * @returns A QueryBuilder with the specified source
+   *
+   * @example
+   * ```ts
+   * // Query from a collection
+   * query.from({ users: usersCollection })
+   *
+   * // Query from a subquery
+   * const activeUsers = query.from({ u: usersCollection }).where(({u}) => u.active)
+   * query.from({ activeUsers })
+   * ```
+   */
   from<TSource extends Source>(
     source: TSource
   ): QueryBuilder<{
@@ -79,7 +94,33 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     }) as any
   }
 
-  // JOIN method
+  /**
+   * Join another table or subquery to the current query
+   *
+   * @param source - An object with a single key-value pair where the key is the table alias and the value is a Collection or subquery
+   * @param onCallback - A function that receives table references and returns the join condition
+   * @param type - The type of join: 'inner', 'left', 'right', or 'full' (defaults to 'left')
+   * @returns A QueryBuilder with the joined table available
+   *
+   * @example
+   * ```ts
+   * // Left join users with posts
+   * query
+   *   .from({ users: usersCollection })
+   *   .join({ posts: postsCollection }, ({users, posts}) => eq(users.id, posts.userId))
+   *
+   * // Inner join with explicit type
+   * query
+   *   .from({ u: usersCollection })
+   *   .join({ p: postsCollection }, ({u, p}) => eq(u.id, p.userId), 'inner')
+   * ```
+   *
+   * // Join with a subquery
+   * const activeUsers = query.from({ u: usersCollection }).where(({u}) => u.active)
+   * query
+   *   .from({ activeUsers })
+   *   .join({ p: postsCollection }, ({u, p}) => eq(u.id, p.userId))
+   */
   join<
     TSource extends Source,
     TJoinType extends `inner` | `left` | `right` | `full` = `left`,
@@ -156,7 +197,28 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     }) as any
   }
 
-  // WHERE method
+  /**
+   * Filter rows based on a condition
+   *
+   * @param callback - A function that receives table references and returns an expression
+   * @returns A QueryBuilder with the where condition applied
+   *
+   * @example
+   * ```ts
+   * // Simple condition
+   * query
+   *   .from({ users: usersCollection })
+   *   .where(({users}) => gt(users.age, 18))
+   *
+   * // Multiple conditions
+   * query
+   *   .from({ users: usersCollection })
+   *   .where(({users}) => and(
+   *     gt(users.age, 18),
+   *     eq(users.active, true)
+   *   ))
+   * ```
+   */
   where(callback: WhereCallback<TContext>): QueryBuilder<TContext> {
     const aliases = this._getCurrentAliases()
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
@@ -168,7 +230,27 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     }) as any
   }
 
-  // HAVING method
+  /**
+   * Filter grouped rows based on aggregate conditions
+   *
+   * @param callback - A function that receives table references and returns an expression
+   * @returns A QueryBuilder with the having condition applied
+   *
+   * @example
+   * ```ts
+   * // Filter groups by count
+   * query
+   *   .from({ posts: postsCollection })
+   *   .groupBy(({posts}) => posts.userId)
+   *   .having(({posts}) => gt(count(posts.id), 5))
+   *
+   * // Filter by average
+   * query
+   *   .from({ orders: ordersCollection })
+   *   .groupBy(({orders}) => orders.customerId)
+   *   .having(({orders}) => gt(avg(orders.total), 100))
+   * ```
+   */
   having(callback: WhereCallback<TContext>): QueryBuilder<TContext> {
     const aliases = this._getCurrentAliases()
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
@@ -180,7 +262,40 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     }) as any
   }
 
-  // SELECT method
+  /**
+   * Select specific columns or computed values from the query
+   *
+   * @param callback - A function that receives table references and returns an object with selected fields or expressions
+   * @returns A QueryBuilder that returns only the selected fields
+   *
+   * @example
+   * ```ts
+   * // Select specific columns
+   * query
+   *   .from({ users: usersCollection })
+   *   .select(({users}) => ({
+   *     name: users.name,
+   *     email: users.email
+   *   }))
+   *
+   * // Select with computed values
+   * query
+   *   .from({ users: usersCollection })
+   *   .select(({users}) => ({
+   *     fullName: concat(users.firstName, ' ', users.lastName),
+   *     ageInMonths: mul(users.age, 12)
+   *   }))
+   *
+   * // Select with aggregates (requires GROUP BY)
+   * query
+   *   .from({ posts: postsCollection })
+   *   .groupBy(({posts}) => posts.userId)
+   *   .select(({posts, count}) => ({
+   *     userId: posts.userId,
+   *     postCount: count(posts.id)
+   *   }))
+   * ```
+   */
   select<TSelectObject extends SelectObject>(
     callback: (refs: RefProxyForContext<TContext>) => TSelectObject
   ): QueryBuilder<WithResult<TContext, ResultTypeFromSelect<TSelectObject>>> {
@@ -228,7 +343,32 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     }) as any
   }
 
-  // ORDER BY method
+  /**
+   * Sort the query results by one or more columns
+   *
+   * @param callback - A function that receives table references and returns the field to sort by
+   * @param direction - Sort direction: 'asc' for ascending, 'desc' for descending (defaults to 'asc')
+   * @returns A QueryBuilder with the ordering applied
+   *
+   * @example
+   * ```ts
+   * // Sort by a single column
+   * query
+   *   .from({ users: usersCollection })
+   *   .orderBy(({users}) => users.name)
+   *
+   * // Sort descending
+   * query
+   *   .from({ users: usersCollection })
+   *   .orderBy(({users}) => users.createdAt, 'desc')
+   *
+   * // Multiple sorts (chain orderBy calls)
+   * query
+   *   .from({ users: usersCollection })
+   *   .orderBy(({users}) => users.lastName)
+   *   .orderBy(({users}) => users.firstName)
+   * ```
+   */
   orderBy(
     callback: OrderByCallback<TContext>,
     direction: OrderByDirection = `asc`
@@ -251,7 +391,34 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     }) as any
   }
 
-  // GROUP BY method
+  /**
+   * Group rows by one or more columns for aggregation
+   *
+   * @param callback - A function that receives table references and returns the field(s) to group by
+   * @returns A QueryBuilder with grouping applied (enables aggregate functions in SELECT and HAVING)
+   *
+   * @example
+   * ```ts
+   * // Group by a single column
+   * query
+   *   .from({ posts: postsCollection })
+   *   .groupBy(({posts}) => posts.userId)
+   *   .select(({posts, count}) => ({
+   *     userId: posts.userId,
+   *     postCount: count()
+   *   }))
+   *
+   * // Group by multiple columns
+   * query
+   *   .from({ sales: salesCollection })
+   *   .groupBy(({sales}) => [sales.region, sales.category])
+   *   .select(({sales, sum}) => ({
+   *     region: sales.region,
+   *     category: sales.category,
+   *     totalSales: sum(sales.amount)
+   *   }))
+   * ```
+   */
   groupBy(callback: GroupByCallback<TContext>): QueryBuilder<TContext> {
     const aliases = this._getCurrentAliases()
     const refProxy = createRefProxy(aliases) as RefProxyForContext<TContext>
@@ -268,7 +435,22 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     }) as any
   }
 
-  // LIMIT method
+  /**
+   * Limit the number of rows returned by the query
+   * `orderBy` is required for `limit`
+   *
+   * @param count - Maximum number of rows to return
+   * @returns A QueryBuilder with the limit applied
+   *
+   * @example
+   * ```ts
+   * // Get top 5 posts by likes
+   * query
+   *   .from({ posts: postsCollection })
+   *   .orderBy(({posts}) => posts.likes, 'desc')
+   *   .limit(5)
+   * ```
+   */
   limit(count: number): QueryBuilder<TContext> {
     return new BaseQueryBuilder({
       ...this.query,
@@ -276,7 +458,23 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
     }) as any
   }
 
-  // OFFSET method
+  /**
+   * Skip a number of rows before returning results
+   * `orderBy` is required for `offset`
+   *
+   * @param count - Number of rows to skip
+   * @returns A QueryBuilder with the offset applied
+   *
+   * @example
+   * ```ts
+   * // Get second page of results
+   * query
+   *   .from({ posts: postsCollection })
+   *   .orderBy(({posts}) => posts.createdAt, 'desc')
+   *   .offset(page * pageSize)
+   *   .limit(pageSize)
+   * ```
+   */
   offset(count: number): QueryBuilder<TContext> {
     return new BaseQueryBuilder({
       ...this.query,
@@ -310,12 +508,33 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
    * some type of optimizations being possible.
    * @example
    * ```ts
-   * q.fn.select((row) => row.user.name)
+   * q.fn.select((row) => ({
+   *   name: row.user.name.toUpperCase(),
+   *   age: row.user.age + 1,
+   * }))
    * ```
    */
   get fn() {
     const builder = this
     return {
+      /**
+       * Select fields using a function that operates on each row
+       * Warning: This cannot be optimized by the query compiler
+       *
+       * @param callback - A function that receives a row and returns the selected value
+       * @returns A QueryBuilder with functional selection applied
+       *
+       * @example
+       * ```ts
+       * // Functional select (not optimized)
+       * query
+       *   .from({ users: usersCollection })
+       *   .fn.select(row => ({
+       *     name: row.users.name.toUpperCase(),
+       *     age: row.users.age + 1,
+       *   }))
+       * ```
+       */
       select<TFuncSelectResult>(
         callback: (row: TContext[`schema`]) => TFuncSelectResult
       ): QueryBuilder<WithResult<TContext, TFuncSelectResult>> {
@@ -325,6 +544,21 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
           fnSelect: callback,
         })
       },
+      /**
+       * Filter rows using a function that operates on each row
+       * Warning: This cannot be optimized by the query compiler
+       *
+       * @param callback - A function that receives a row and returns a boolean
+       * @returns A QueryBuilder with functional filtering applied
+       *
+       * @example
+       * ```ts
+       * // Functional where (not optimized)
+       * query
+       *   .from({ users: usersCollection })
+       *   .fn.where(row => row.users.name.startsWith('A'))
+       * ```
+       */
       where(
         callback: (row: TContext[`schema`]) => any
       ): QueryBuilder<TContext> {
@@ -336,6 +570,22 @@ export class BaseQueryBuilder<TContext extends Context = Context> {
           ],
         })
       },
+      /**
+       * Filter grouped rows using a function that operates on each aggregated row
+       * Warning: This cannot be optimized by the query compiler
+       *
+       * @param callback - A function that receives an aggregated row and returns a boolean
+       * @returns A QueryBuilder with functional having filter applied
+       *
+       * @example
+       * ```ts
+       * // Functional having (not optimized)
+       * query
+       *   .from({ posts: postsCollection })
+       *   .groupBy(({posts}) => posts.userId)
+       *   .fn.having(row => row.count > 5)
+       * ```
+       */
       having(
         callback: (row: TContext[`schema`]) => any
       ): QueryBuilder<TContext> {
