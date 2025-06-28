@@ -128,9 +128,6 @@ export function isIn(
   return new Func(`in`, [toExpression(value), toExpression(array)])
 }
 
-// Export as 'in' for the examples in README
-export { isIn as in }
-
 export function like(
   left:
     | RefProxy<string>

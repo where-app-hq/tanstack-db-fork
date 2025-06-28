@@ -22,7 +22,7 @@ export {
   and,
   or,
   not,
-  isIn as in,
+  isIn,
   like,
   ilike,
   // Functions
