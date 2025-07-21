@@ -8,6 +8,34 @@ import { OrderedIndex } from "./indexes/ordered-index.js"
 import { IndexProxy, LazyIndexWrapper } from "./indexes/lazy-index.js"
 import { ensureIndexForExpression } from "./indexes/auto-index.js"
 import { createTransaction, getActiveTransaction } from "./transactions"
+import {
+  CollectionInErrorStateError,
+  CollectionIsInErrorStateError,
+  CollectionRequiresConfigError,
+  CollectionRequiresSyncConfigError,
+  DeleteKeyNotFoundError,
+  DuplicateKeyError,
+  DuplicateKeySyncError,
+  InvalidCollectionStatusTransitionError,
+  InvalidSchemaError,
+  KeyUpdateNotAllowedError,
+  MissingDeleteHandlerError,
+  MissingInsertHandlerError,
+  MissingUpdateArgumentError,
+  MissingUpdateHandlerError,
+  NegativeActiveSubscribersError,
+  NoKeysPassedToDeleteError,
+  NoKeysPassedToUpdateError,
+  NoPendingSyncTransactionCommitError,
+  NoPendingSyncTransactionWriteError,
+  SchemaMustBeSynchronousError,
+  SchemaValidationError,
+  SyncCleanupError,
+  SyncTransactionAlreadyCommittedError,
+  SyncTransactionAlreadyCommittedWriteError,
+  UndefinedKeyError,
+  UpdateKeyNotFoundError,
+} from "./errors"
 import { createFilteredCallback, currentStateAsChanges } from "./change-events"
 import type { Transaction } from "./transactions"
 import type { StandardSchemaV1 } from "@standard-schema/spec"
@@ -176,35 +204,6 @@ export function createCollection<
   >
 }
 
-/**
- * Custom error class for schema validation errors
- */
-export class SchemaValidationError extends Error {
-  type: `insert` | `update`
-  issues: ReadonlyArray<{
-    message: string
-    path?: ReadonlyArray<string | number | symbol>
-  }>
-
-  constructor(
-    type: `insert` | `update`,
-    issues: ReadonlyArray<{
-      message: string
-      path?: ReadonlyArray<string | number | symbol>
-    }>,
-    message?: string
-  ) {
-    const defaultMessage = `${type === `insert` ? `Insert` : `Update`} validation failed: ${issues
-      .map((issue) => `\n- ${issue.message} - path: ${issue.path}`)
-      .join(``)}`
-
-    super(message || defaultMessage)
-    this.name = `SchemaValidationError`
-    this.type = type
-    this.issues = issues
-  }
-}
-
 export class CollectionImpl<
   T extends object = Record<string, unknown>,
   TKey extends string | number = string | number,
@@ -342,10 +341,7 @@ export class CollectionImpl<
   private validateCollectionUsable(operation: string): void {
     switch (this._status) {
       case `error`:
-        throw new Error(
-          `Cannot perform ${operation} on collection "${this.id}" - collection is in error state. ` +
-            `Try calling cleanup() and restarting the collection.`
-        )
+        throw new CollectionInErrorStateError(operation, this.id)
       case `cleaned-up`:
         // Automatically restart the collection when operations are called on cleaned-up collections
         this.startSync()
@@ -378,9 +374,7 @@ export class CollectionImpl<
     }
 
     if (!validTransitions[from].includes(to)) {
-      throw new Error(
-        `Invalid collection status transition from "${from}" to "${to}" for collection "${this.id}"`
-      )
+      throw new InvalidCollectionStatusTransitionError(from, to, this.id)
     }
   }
 
@@ -410,7 +404,7 @@ export class CollectionImpl<
   constructor(config: CollectionConfig<T, TKey, TSchema, TInsertInput>) {
     // eslint-disable-next-line
     if (!config) {
-      throw new Error(`Collection requires a config`)
+      throw new CollectionRequiresConfigError()
     }
     if (config.id) {
       this.id = config.id
@@ -420,7 +414,7 @@ export class CollectionImpl<
 
     // eslint-disable-next-line
     if (!config.sync) {
-      throw new Error(`Collection requires a sync config`)
+      throw new CollectionRequiresSyncConfigError()
     }
 
     this.transactions = new SortedMap<string, Transaction<any>>((a, b) =>
@@ -483,12 +477,10 @@ export class CollectionImpl<
               this.pendingSyncedTransactions.length - 1
             ]
           if (!pendingTransaction) {
-            throw new Error(`No pending sync transaction to write to`)
+            throw new NoPendingSyncTransactionWriteError()
           }
           if (pendingTransaction.committed) {
-            throw new Error(
-              `The pending sync transaction is already committed, you can't still write to it.`
-            )
+            throw new SyncTransactionAlreadyCommittedWriteError()
           }
           const key = this.getKeyFromItem(messageWithoutKey.value)
 
@@ -500,9 +492,7 @@ export class CollectionImpl<
                 (op) => op.key === key && op.type === `delete`
               )
             ) {
-              throw new Error(
-                `Cannot insert document with key "${key}" from sync because it already exists in the collection "${this.id}"`
-              )
+              throw new DuplicateKeySyncError(key, this.id)
             }
           }
 
@@ -518,12 +508,10 @@ export class CollectionImpl<
               this.pendingSyncedTransactions.length - 1
             ]
           if (!pendingTransaction) {
-            throw new Error(`No pending sync transaction to commit`)
+            throw new NoPendingSyncTransactionCommitError()
           }
           if (pendingTransaction.committed) {
-            throw new Error(
-              `The pending sync transaction is already committed, you can't commit it again.`
-            )
+            throw new SyncTransactionAlreadyCommittedError()
           }
 
           pendingTransaction.committed = true
@@ -565,7 +553,7 @@ export class CollectionImpl<
       }
 
       if (this._status === `error`) {
-        reject(new Error(`Collection is in error state`))
+        reject(new CollectionIsInErrorStateError())
         return
       }
 
@@ -610,16 +598,12 @@ export class CollectionImpl<
       queueMicrotask(() => {
         if (error instanceof Error) {
           // Preserve the original error and stack trace
-          const wrappedError = new Error(
-            `Collection "${this.id}" sync cleanup function threw an error: ${error.message}`
-          )
+          const wrappedError = new SyncCleanupError(this.id, error)
           wrappedError.cause = error
           wrappedError.stack = error.stack
           throw wrappedError
         } else {
-          throw new Error(
-            `Collection "${this.id}" sync cleanup function threw an error: ${String(error)}`
-          )
+          throw new SyncCleanupError(this.id, error as Error | string)
         }
       })
     }
@@ -696,9 +680,7 @@ export class CollectionImpl<
       this.activeSubscribersCount = 0
       this.startGCTimer()
     } else if (this.activeSubscribersCount < 0) {
-      throw new Error(
-        `Active subscribers count is negative - this should never happen`
-      )
+      throw new NegativeActiveSubscribersError()
     }
   }
 
@@ -1289,7 +1271,7 @@ export class CollectionImpl<
       return schema as StandardSchema<T>
     }
 
-    throw new Error(`Schema must implement the standard-schema interface`)
+    throw new InvalidSchemaError()
   }
 
   public getKeyFromItem(item: T): TKey {
@@ -1298,9 +1280,7 @@ export class CollectionImpl<
 
   public generateGlobalKey(key: any, item: any): string {
     if (typeof key === `undefined`) {
-      throw new Error(
-        `An object was created without a defined key: ${JSON.stringify(item)}`
-      )
+      throw new UndefinedKeyError(item)
     }
 
     return `KEY::${this.id}/${key}`
@@ -1514,7 +1494,7 @@ export class CollectionImpl<
 
         // Ensure validation is synchronous
         if (result instanceof Promise) {
-          throw new TypeError(`Schema validation must be synchronous`)
+          throw new SchemaMustBeSynchronousError()
         }
 
         // If validation fails, throw a SchemaValidationError with the issues
@@ -1537,7 +1517,7 @@ export class CollectionImpl<
 
     // Ensure validation is synchronous
     if (result instanceof Promise) {
-      throw new TypeError(`Schema validation must be synchronous`)
+      throw new SchemaMustBeSynchronousError()
     }
 
     // If validation fails, throw a SchemaValidationError with the issues
@@ -1597,9 +1577,7 @@ export class CollectionImpl<
 
     // If no ambient transaction exists, check for an onInsert handler early
     if (!ambientTransaction && !this.config.onInsert) {
-      throw new Error(
-        `Collection.insert called directly (not within an explicit transaction) but no 'onInsert' handler is configured.`
-      )
+      throw new MissingInsertHandlerError()
     }
 
     const items = Array.isArray(data) ? data : [data]
@@ -1613,7 +1591,7 @@ export class CollectionImpl<
       // Check if an item with this ID already exists in the collection
       const key = this.getKeyFromItem(validatedData)
       if (this.has(key)) {
-        throw `Cannot insert document with ID "${key}" because it already exists in the collection`
+        throw new DuplicateKeyError(key)
       }
       const globalKey = this.generateGlobalKey(key, item)
 
@@ -1752,7 +1730,7 @@ export class CollectionImpl<
     maybeCallback?: (draft: TItem | Array<TItem>) => void
   ) {
     if (typeof keys === `undefined`) {
-      throw new Error(`The first argument to update is missing`)
+      throw new MissingUpdateArgumentError()
     }
 
     this.validateCollectionUsable(`update`)
@@ -1761,16 +1739,14 @@ export class CollectionImpl<
 
     // If no ambient transaction exists, check for an onUpdate handler early
     if (!ambientTransaction && !this.config.onUpdate) {
-      throw new Error(
-        `Collection.update called directly (not within an explicit transaction) but no 'onUpdate' handler is configured.`
-      )
+      throw new MissingUpdateHandlerError()
     }
 
     const isArray = Array.isArray(keys)
     const keysArray = isArray ? keys : [keys]
 
     if (isArray && keysArray.length === 0) {
-      throw new Error(`No keys were passed to update`)
+      throw new NoKeysPassedToUpdateError()
     }
 
     const callback =
@@ -1782,9 +1758,7 @@ export class CollectionImpl<
     const currentObjects = keysArray.map((key) => {
       const item = this.get(key)
       if (!item) {
-        throw new Error(
-          `The key "${key}" was passed to update but an object for this key was not found in the collection`
-        )
+        throw new UpdateKeyNotFoundError(key)
       }
 
       return item
@@ -1835,9 +1809,7 @@ export class CollectionImpl<
         const modifiedItemId = this.getKeyFromItem(modifiedItem)
 
         if (originalItemId !== modifiedItemId) {
-          throw new Error(
-            `Updating the key of an item is not allowed. Original key: "${originalItemId}", Attempted new key: "${modifiedItemId}". Please delete the old item and create a new one if a key change is necessary.`
-          )
+          throw new KeyUpdateNotAllowedError(originalItemId, modifiedItemId)
         }
 
         const globalKey = this.generateGlobalKey(modifiedItemId, modifiedItem)
@@ -1951,13 +1923,11 @@ export class CollectionImpl<
 
     // If no ambient transaction exists, check for an onDelete handler early
     if (!ambientTransaction && !this.config.onDelete) {
-      throw new Error(
-        `Collection.delete called directly (not within an explicit transaction) but no 'onDelete' handler is configured.`
-      )
+      throw new MissingDeleteHandlerError()
     }
 
     if (Array.isArray(keys) && keys.length === 0) {
-      throw new Error(`No keys were passed to delete`)
+      throw new NoKeysPassedToDeleteError()
     }
 
     const keysArray = Array.isArray(keys) ? keys : [keys]
@@ -1965,9 +1935,7 @@ export class CollectionImpl<
 
     for (const key of keysArray) {
       if (!this.has(key)) {
-        throw new Error(
-          `Collection.delete was called with key '${key}' but there is no item in the collection with this key`
-        )
+        throw new DeleteKeyNotFoundError(key)
       }
       const globalKey = this.generateGlobalKey(key, this.get(key)!)
       const mutation: PendingMutation<T, `delete`, this> = {

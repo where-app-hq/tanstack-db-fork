@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from "vitest"
 import { concat, createLiveQueryCollection } from "../../src/query/index.js"
 import { createCollection } from "../../src/collection.js"
 import { mockSyncCollectionOptions } from "../utls.js"
+import { DistinctRequiresSelectError } from "../../src/errors"
 
 // Sample data types for comprehensive DISTINCT testing
 type User = {
@@ -185,7 +186,7 @@ function createDistinctTests(autoIndex: `off` | `eager`): void {
             startSync: true,
             query: (q) => q.from({ users: usersCollection }).distinct(),
           })
-        ).toThrow(`DISTINCT requires a SELECT clause.`)
+        ).toThrow(DistinctRequiresSelectError)
       })
     })
 
@@ -193,7 +194,7 @@ function createDistinctTests(autoIndex: `off` | `eager`): void {
       let usersCollection: ReturnType<typeof createUsersCollection>
 
       beforeEach(() => {
-        usersCollection = createUsersCollection()
+        usersCollection = createUsersCollection(autoIndex)
       })
 
       test(`distinct on computed salary ranges`, () => {
@@ -251,7 +252,7 @@ function createDistinctTests(autoIndex: `off` | `eager`): void {
       let usersCollection: ReturnType<typeof createUsersCollection>
 
       beforeEach(() => {
-        usersCollection = createUsersCollection()
+        usersCollection = createUsersCollection(autoIndex)
       })
 
       test(`live updates when inserting new users`, () => {
