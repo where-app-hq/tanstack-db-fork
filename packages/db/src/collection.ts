@@ -687,7 +687,9 @@ export class CollectionImpl<
   /**
    * Recompute optimistic state from active transactions
    */
-  private recomputeOptimisticState(): void {
+  private recomputeOptimisticState(
+    triggeredByUserAction: boolean = false
+  ): void {
     // Skip redundant recalculations when we're in the middle of committing sync transactions
     if (this.isCommittingSyncTransactions) {
       return
@@ -738,13 +740,26 @@ export class CollectionImpl<
     this.collectOptimisticChanges(previousState, previousDeletes, events)
 
     // Filter out events for recently synced keys to prevent duplicates
-    const filteredEventsBySyncStatus = events.filter(
-      (event) => !this.recentlySyncedKeys.has(event.key)
-    )
+    // BUT: Only filter out events that are actually from sync operations
+    // New user transactions should NOT be filtered even if the key was recently synced
+    const filteredEventsBySyncStatus = events.filter((event) => {
+      if (!this.recentlySyncedKeys.has(event.key)) {
+        return true // Key not recently synced, allow event through
+      }
+
+      // Key was recently synced - allow if this is a user-triggered action
+      if (triggeredByUserAction) {
+        return true
+      }
+
+      // Otherwise filter out duplicate sync events
+      return false
+    })
 
     // Filter out redundant delete events if there are pending sync transactions
     // that will immediately restore the same data, but only for completed transactions
-    if (this.pendingSyncedTransactions.length > 0) {
+    // IMPORTANT: Skip complex filtering for user-triggered actions to prevent UI blocking
+    if (this.pendingSyncedTransactions.length > 0 && !triggeredByUserAction) {
       const pendingSyncKeys = new Set<TKey>()
       const completedTransactionMutations = new Set<string>()
 
@@ -788,14 +803,14 @@ export class CollectionImpl<
       if (filteredEvents.length > 0) {
         this.updateIndexes(filteredEvents)
       }
-      this.emitEvents(filteredEvents)
+      this.emitEvents(filteredEvents, triggeredByUserAction)
     } else {
       // Update indexes for all events
       if (filteredEventsBySyncStatus.length > 0) {
         this.updateIndexes(filteredEventsBySyncStatus)
       }
       // Emit all events if no pending sync transactions
-      this.emitEvents(filteredEventsBySyncStatus)
+      this.emitEvents(filteredEventsBySyncStatus, triggeredByUserAction)
     }
   }
 
@@ -878,22 +893,21 @@ export class CollectionImpl<
    */
   private emitEvents(
     changes: Array<ChangeMessage<T, TKey>>,
-    endBatching = false
+    forceEmit = false
   ): void {
-    if (this.shouldBatchEvents && !endBatching) {
+    // Skip batching for user actions (forceEmit=true) to keep UI responsive
+    if (this.shouldBatchEvents && !forceEmit) {
       // Add events to the batch
       this.batchedEvents.push(...changes)
       return
     }
 
-    // Either we're not batching, or we're ending the batching cycle
+    // Either we're not batching, or we're forcing emission (user action or ending batch cycle)
     let eventsToEmit = changes
 
-    if (endBatching) {
-      // End batching: combine any batched events with new events and clean up state
-      if (this.batchedEvents.length > 0) {
-        eventsToEmit = [...this.batchedEvents, ...changes]
-      }
+    // If we have batched events and this is a forced emit, combine them
+    if (this.batchedEvents.length > 0 && forceEmit) {
+      eventsToEmit = [...this.batchedEvents, ...changes]
       this.batchedEvents = []
       this.shouldBatchEvents = false
     }
@@ -1625,7 +1639,7 @@ export class CollectionImpl<
       ambientTransaction.applyMutations(mutations)
 
       this.transactions.set(ambientTransaction.id, ambientTransaction)
-      this.recomputeOptimisticState()
+      this.recomputeOptimisticState(true)
 
       return ambientTransaction
     } else {
@@ -1650,7 +1664,7 @@ export class CollectionImpl<
 
       // Add the transaction to the collection's transactions store
       this.transactions.set(directOpTransaction.id, directOpTransaction)
-      this.recomputeOptimisticState()
+      this.recomputeOptimisticState(true)
 
       return directOpTransaction
     }
@@ -1847,7 +1861,7 @@ export class CollectionImpl<
       ambientTransaction.applyMutations(mutations)
 
       this.transactions.set(ambientTransaction.id, ambientTransaction)
-      this.recomputeOptimisticState()
+      this.recomputeOptimisticState(true)
 
       return ambientTransaction
     }
@@ -1876,7 +1890,7 @@ export class CollectionImpl<
     // Add the transaction to the collection's transactions store
 
     this.transactions.set(directOpTransaction.id, directOpTransaction)
-    this.recomputeOptimisticState()
+    this.recomputeOptimisticState(true)
 
     return directOpTransaction
   }
@@ -1963,7 +1977,7 @@ export class CollectionImpl<
       ambientTransaction.applyMutations(mutations)
 
       this.transactions.set(ambientTransaction.id, ambientTransaction)
-      this.recomputeOptimisticState()
+      this.recomputeOptimisticState(true)
 
       return ambientTransaction
     }
@@ -1989,7 +2003,7 @@ export class CollectionImpl<
     directOpTransaction.commit()
 
     this.transactions.set(directOpTransaction.id, directOpTransaction)
-    this.recomputeOptimisticState()
+    this.recomputeOptimisticState(true)
 
     return directOpTransaction
   }
@@ -2251,6 +2265,6 @@ export class CollectionImpl<
     // CRITICAL: Capture visible state BEFORE clearing optimistic state
     this.capturePreSyncVisibleState()
 
-    this.recomputeOptimisticState()
+    this.recomputeOptimisticState(false)
   }
 }
