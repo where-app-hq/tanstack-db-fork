@@ -1017,6 +1017,359 @@ describe(`QueryCollection`, () => {
     })
   })
 
+  describe(`Manual Sync Operations`, () => {
+    it(`should provide sync methods for manual collection updates`, async () => {
+      const queryKey = [`sync-test`]
+      const initialItems: Array<TestItem> = [
+        { id: `1`, name: `Item 1`, value: 10 },
+        { id: `2`, name: `Item 2`, value: 20 },
+      ]
+
+      const queryFn = vi.fn().mockResolvedValue(initialItems)
+
+      const config: QueryCollectionConfig<TestItem> = {
+        id: `sync-test-collection`,
+        queryClient,
+        queryKey,
+        queryFn,
+        getKey,
+        startSync: true,
+      }
+
+      const options = queryCollectionOptions(config)
+      const collection = createCollection(options)
+
+      // Wait for collection to be ready
+      await vi.waitFor(() => {
+        expect(collection.status).toBe(`ready`)
+        expect(collection.size).toBe(2)
+      })
+
+      // Test writeInsert
+      const newItem: TestItem = { id: `3`, name: `Item 3`, value: 30 }
+      collection.utils.writeInsert(newItem)
+
+      expect(collection.size).toBe(3)
+      expect(collection.get(`3`)).toEqual(newItem)
+
+      // Test writeUpdate
+      collection.utils.writeUpdate({ id: `1`, name: `Updated Item 1` })
+
+      const updatedItem = collection.get(`1`)
+      expect(updatedItem?.name).toBe(`Updated Item 1`)
+      expect(updatedItem?.value).toBe(10) // Should preserve other fields
+
+      // Test writeUpsert (update existing)
+      collection.utils.writeUpsert({
+        id: `2`,
+        name: `Upserted Item 2`,
+        value: 25,
+      })
+
+      const upsertedItem = collection.get(`2`)
+      expect(upsertedItem?.name).toBe(`Upserted Item 2`)
+      expect(upsertedItem?.value).toBe(25)
+
+      // Test writeUpsert (insert new)
+      collection.utils.writeUpsert({ id: `4`, name: `New Item 4`, value: 40 })
+
+      expect(collection.size).toBe(4)
+      expect(collection.get(`4`)).toEqual({
+        id: `4`,
+        name: `New Item 4`,
+        value: 40,
+      })
+
+      // Test writeDelete
+      collection.utils.writeDelete(`3`)
+
+      expect(collection.size).toBe(3)
+      expect(collection.has(`3`)).toBe(false)
+
+      // Test batch operations
+      collection.utils.writeInsert([
+        { id: `5`, name: `Item 5`, value: 50 },
+        { id: `6`, name: `Item 6`, value: 60 },
+      ])
+
+      expect(collection.size).toBe(5)
+      expect(collection.get(`5`)?.name).toBe(`Item 5`)
+      expect(collection.get(`6`)?.name).toBe(`Item 6`)
+
+      // Test batch delete
+      collection.utils.writeDelete([`5`, `6`])
+
+      expect(collection.size).toBe(3)
+      expect(collection.has(`5`)).toBe(false)
+      expect(collection.has(`6`)).toBe(false)
+
+      // Test writeBatch with mixed operations
+      collection.utils.writeBatch([
+        { type: `insert`, data: { id: `7`, name: `Batch Insert`, value: 70 } },
+        { type: `update`, data: { id: `4`, name: `Batch Updated Item 4` } },
+        { type: `upsert`, data: { id: `8`, name: `Batch Upsert`, value: 80 } },
+        { type: `delete`, key: `1` },
+      ])
+
+      expect(collection.size).toBe(4) // 3 - 1 (delete) + 2 (insert + upsert) = 4
+      expect(collection.get(`7`)?.name).toBe(`Batch Insert`)
+      expect(collection.get(`4`)?.name).toBe(`Batch Updated Item 4`)
+      expect(collection.get(`8`)?.name).toBe(`Batch Upsert`)
+      expect(collection.has(`1`)).toBe(false)
+    })
+
+    it(`should handle sync method errors appropriately`, async () => {
+      const queryKey = [`sync-error-test`]
+      const initialItems: Array<TestItem> = [{ id: `1`, name: `Item 1` }]
+      const queryFn = vi.fn().mockResolvedValue(initialItems)
+
+      const config: QueryCollectionConfig<TestItem> = {
+        id: `sync-error-test-collection`,
+        queryClient,
+        queryKey,
+        queryFn,
+        getKey,
+        startSync: true,
+      }
+
+      const options = queryCollectionOptions(config)
+      const collection = createCollection(options)
+
+      // Wait for collection to be ready
+      await vi.waitFor(() => {
+        expect(collection.status).toBe(`ready`)
+      })
+
+      // Test missing key error in writeUpdate
+      expect(() => {
+        collection.utils.writeUpdate({ id: `999`, name: `Missing` })
+      }).toThrow(/does not exist/)
+
+      // Test missing key error in writeDelete
+      expect(() => {
+        collection.utils.writeDelete(`999`)
+      }).toThrow(/does not exist/)
+    })
+
+    it(`should handle writeBatch validation errors`, async () => {
+      const queryKey = [`sync-batch-error-test`]
+      const initialItems: Array<TestItem> = [{ id: `1`, name: `Item 1` }]
+      const queryFn = vi.fn().mockResolvedValue(initialItems)
+
+      const config: QueryCollectionConfig<TestItem> = {
+        id: `sync-batch-error-test-collection`,
+        queryClient,
+        queryKey,
+        queryFn,
+        getKey,
+        startSync: true,
+      }
+
+      const options = queryCollectionOptions(config)
+      const collection = createCollection(options)
+
+      // Wait for collection to be ready
+      await vi.waitFor(() => {
+        expect(collection.status).toBe(`ready`)
+      })
+
+      // Test duplicate keys within batch
+      expect(() => {
+        collection.utils.writeBatch([
+          { type: `insert`, data: { id: `2`, name: `Item 2` } },
+          { type: `update`, data: { id: `2`, name: `Updated Item 2` } },
+        ])
+      }).toThrow(/Duplicate key.*found within batch operations/)
+
+      // Test updating non-existent item in batch
+      expect(() => {
+        collection.utils.writeBatch([
+          { type: `update`, data: { id: `999`, name: `Missing` } },
+        ])
+      }).toThrow(/does not exist/)
+
+      // Test deleting non-existent item in batch
+      expect(() => {
+        collection.utils.writeBatch([{ type: `delete`, key: `999` }])
+      }).toThrow(/does not exist/)
+    })
+
+    it(`should update query cache when using sync methods`, async () => {
+      const queryKey = [`sync-cache-test`]
+      const initialItems: Array<TestItem> = [
+        { id: `1`, name: `Item 1`, value: 10 },
+        { id: `2`, name: `Item 2`, value: 20 },
+      ]
+
+      const queryFn = vi.fn().mockResolvedValue(initialItems)
+
+      const config: QueryCollectionConfig<TestItem> = {
+        id: `sync-cache-test-collection`,
+        queryClient,
+        queryKey,
+        queryFn,
+        getKey,
+        startSync: true,
+      }
+
+      const options = queryCollectionOptions(config)
+      const collection = createCollection(options)
+
+      // Wait for collection to be ready
+      await vi.waitFor(() => {
+        expect(collection.status).toBe(`ready`)
+        expect(collection.size).toBe(2)
+      })
+
+      // Verify initial query cache state
+      const initialCache = queryClient.getQueryData(queryKey) as Array<TestItem>
+      expect(initialCache).toHaveLength(2)
+      expect(initialCache).toEqual(initialItems)
+
+      // Test writeInsert updates cache
+      const newItem = { id: `3`, name: `Item 3`, value: 30 }
+      collection.utils.writeInsert(newItem)
+
+      const cacheAfterInsert = queryClient.getQueryData(
+        queryKey
+      ) as Array<TestItem>
+      expect(cacheAfterInsert).toHaveLength(3)
+      expect(cacheAfterInsert).toContainEqual(newItem)
+
+      // Test writeUpdate updates cache
+      collection.utils.writeUpdate({ id: `1`, name: `Updated Item 1` })
+
+      const cacheAfterUpdate = queryClient.getQueryData(
+        queryKey
+      ) as Array<TestItem>
+      expect(cacheAfterUpdate).toHaveLength(3)
+      const updatedItem = cacheAfterUpdate.find((item) => item.id === `1`)
+      expect(updatedItem?.name).toBe(`Updated Item 1`)
+      expect(updatedItem?.value).toBe(10) // Original value preserved
+
+      // Test writeDelete updates cache
+      collection.utils.writeDelete(`2`)
+
+      const cacheAfterDelete = queryClient.getQueryData(
+        queryKey
+      ) as Array<TestItem>
+      expect(cacheAfterDelete).toHaveLength(2)
+      expect(cacheAfterDelete).not.toContainEqual({
+        id: `2`,
+        name: `Item 2`,
+        value: 20,
+      })
+
+      // Test writeUpsert updates cache
+      collection.utils.writeUpsert({ id: `4`, name: `Item 4`, value: 40 })
+
+      const cacheAfterUpsert = queryClient.getQueryData(
+        queryKey
+      ) as Array<TestItem>
+      expect(cacheAfterUpsert).toHaveLength(3)
+      expect(cacheAfterUpsert).toContainEqual({
+        id: `4`,
+        name: `Item 4`,
+        value: 40,
+      })
+
+      // Test writeBatch updates cache with multiple operations
+      collection.utils.writeBatch([
+        { type: `insert`, data: { id: `5`, name: `Batch Item 5`, value: 50 } },
+        { type: `update`, data: { id: `3`, name: `Batch Updated Item 3` } },
+        { type: `delete`, key: `1` },
+        { type: `upsert`, data: { id: `6`, name: `Batch Item 6`, value: 60 } },
+      ])
+
+      const cacheAfterBatch = queryClient.getQueryData(
+        queryKey
+      ) as Array<TestItem>
+      expect(cacheAfterBatch).toHaveLength(4) // 3 - 1 (delete) + 1 (insert) + 1 (upsert) = 4
+
+      // Verify specific changes from batch
+      expect(cacheAfterBatch).not.toContainEqual(
+        expect.objectContaining({ id: `1` })
+      )
+      expect(cacheAfterBatch).toContainEqual({
+        id: `5`,
+        name: `Batch Item 5`,
+        value: 50,
+      })
+      expect(cacheAfterBatch).toContainEqual({
+        id: `6`,
+        name: `Batch Item 6`,
+        value: 60,
+      })
+
+      const batchUpdatedItem = cacheAfterBatch.find((item) => item.id === `3`)
+      expect(batchUpdatedItem?.name).toBe(`Batch Updated Item 3`)
+      expect(batchUpdatedItem?.value).toBe(30) // Original value preserved
+
+      // Verify cache and collection are in sync
+      expect(cacheAfterBatch.length).toBe(collection.size)
+      expect(new Set(cacheAfterBatch)).toEqual(new Set(collection.toArray))
+    })
+
+    it(`should maintain cache consistency during error scenarios`, async () => {
+      const queryKey = [`sync-cache-error-test`]
+      const initialItems: Array<TestItem> = [
+        { id: `1`, name: `Item 1` },
+        { id: `2`, name: `Item 2` },
+      ]
+
+      const queryFn = vi.fn().mockResolvedValue(initialItems)
+
+      const config: QueryCollectionConfig<TestItem> = {
+        id: `sync-cache-error-test-collection`,
+        queryClient,
+        queryKey,
+        queryFn,
+        getKey,
+        startSync: true,
+      }
+
+      const options = queryCollectionOptions(config)
+      const collection = createCollection(options)
+
+      // Wait for collection to be ready
+      await vi.waitFor(() => {
+        expect(collection.status).toBe(`ready`)
+      })
+
+      // Get initial cache state
+      const initialCache = queryClient.getQueryData(queryKey) as Array<TestItem>
+      expect(initialCache).toHaveLength(2)
+
+      // Try to update non-existent item (should throw and not update cache)
+      expect(() => {
+        collection.utils.writeUpdate({ id: `999`, name: `Should Fail` })
+      }).toThrow()
+
+      // Verify cache wasn't modified
+      const cacheAfterError = queryClient.getQueryData(
+        queryKey
+      ) as Array<TestItem>
+      expect(cacheAfterError).toEqual(initialCache)
+      expect(cacheAfterError).toHaveLength(2)
+
+      // Try batch with duplicate keys (should throw and not update cache)
+      expect(() => {
+        collection.utils.writeBatch([
+          { type: `insert`, data: { id: `3`, name: `Item 3` } },
+          { type: `update`, data: { id: `3`, name: `Duplicate` } },
+        ])
+      }).toThrow(/Duplicate key/)
+
+      // Verify cache wasn't modified
+      const cacheAfterBatchError = queryClient.getQueryData(
+        queryKey
+      ) as Array<TestItem>
+      expect(cacheAfterBatchError).toEqual(initialCache)
+      expect(cacheAfterBatchError).toHaveLength(2)
+      expect(collection.size).toBe(2)
+    })
+  })
+
   it(`should call markReady when queryFn returns an empty array`, async () => {
     const queryKey = [`emptyArrayTest`]
     const queryFn = vi.fn().mockResolvedValue([])

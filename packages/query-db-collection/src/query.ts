@@ -5,6 +5,8 @@ import {
   QueryFnRequiredError,
   QueryKeyRequiredError,
 } from "./errors"
+import { createWriteUtils } from "./manual-sync"
+import type { SyncOperation } from "./manual-sync"
 import type {
   QueryClient,
   QueryFunctionContext,
@@ -12,6 +14,7 @@ import type {
   QueryObserverOptions,
 } from "@tanstack/query-core"
 import type {
+  ChangeMessage,
   CollectionConfig,
   DeleteMutationFn,
   DeleteMutationFnParams,
@@ -22,6 +25,9 @@ import type {
   UpdateMutationFnParams,
   UtilsRecord,
 } from "@tanstack/db"
+
+// Re-export for external use
+export type { SyncOperation } from "./manual-sync"
 
 export interface QueryCollectionConfig<
   TItem extends object,
@@ -222,8 +228,22 @@ export type RefetchFn = () => Promise<void>
 /**
  * Query collection utilities type
  */
-export interface QueryCollectionUtils extends UtilsRecord {
+/**
+ * Write operation types for batch operations
+ */
+export interface QueryCollectionUtils<
+  TItem extends object = Record<string, unknown>,
+  TKey extends string | number = string | number,
+  TInsertInput extends object = TItem,
+> extends UtilsRecord {
   refetch: RefetchFn
+  writeInsert: (data: TInsertInput | Array<TInsertInput>) => void
+  writeUpdate: (updates: Partial<TItem> | Array<Partial<TItem>>) => void
+  writeDelete: (keys: TKey | Array<TKey>) => void
+  writeUpsert: (data: Partial<TItem> | Array<Partial<TItem>>) => void
+  writeBatch: (
+    operations: Array<SyncOperation<TItem, TKey, TInsertInput>>
+  ) => void
 }
 
 /**
@@ -236,9 +256,13 @@ export function queryCollectionOptions<
   TItem extends object,
   TError = unknown,
   TQueryKey extends QueryKey = QueryKey,
+  TKey extends string | number = string | number,
+  TInsertInput extends object = TItem,
 >(
   config: QueryCollectionConfig<TItem, TError, TQueryKey>
-): CollectionConfig<TItem> & { utils: QueryCollectionUtils } {
+): CollectionConfig<TItem> & {
+  utils: QueryCollectionUtils<TItem, TKey, TInsertInput>
+} {
   const {
     queryKey,
     queryFn,
@@ -408,6 +432,41 @@ export function queryCollectionOptions<
     })
   }
 
+  // Create write context for manual write operations
+  let writeContext: {
+    collection: any
+    queryClient: QueryClient
+    queryKey: Array<unknown>
+    getKey: (item: TItem) => TKey
+    begin: () => void
+    write: (message: Omit<ChangeMessage<TItem>, `key`>) => void
+    commit: () => void
+  } | null = null
+
+  // Enhanced internalSync that captures write functions for manual use
+  const enhancedInternalSync: SyncConfig<TItem>[`sync`] = (params) => {
+    const { begin, write, commit, collection } = params
+
+    // Store references for manual write operations
+    writeContext = {
+      collection,
+      queryClient,
+      queryKey: queryKey as unknown as Array<unknown>,
+      getKey: getKey as (item: TItem) => TKey,
+      begin,
+      write,
+      commit,
+    }
+
+    // Call the original internalSync logic
+    return internalSync(params)
+  }
+
+  // Create write utils using the manual-sync module
+  const writeUtils = createWriteUtils<TItem, TKey, TInsertInput>(
+    () => writeContext
+  )
+
   // Create wrapper handlers for direct persistence operations that handle refetching
   const wrappedOnInsert = onInsert
     ? async (params: InsertMutationFnParams<TItem>) => {
@@ -454,12 +513,13 @@ export function queryCollectionOptions<
   return {
     ...baseCollectionConfig,
     getKey,
-    sync: { sync: internalSync },
+    sync: { sync: enhancedInternalSync },
     onInsert: wrappedOnInsert,
     onUpdate: wrappedOnUpdate,
     onDelete: wrappedOnDelete,
     utils: {
       refetch,
+      ...writeUtils,
     },
   }
 }
